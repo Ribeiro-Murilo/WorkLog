@@ -41,8 +41,19 @@ final class NotchWindowController: NSObject {
     /// Tamanho da área expandida, ancorada no topo-centro do notch.
     var expandedSize = CGSize(width: 340, height: 420)
 
-    /// Conteúdo SwiftUI hospedado no painel. Recebe `isExpanded` a cada mudança de estado.
-    var content: ((Bool) -> AnyView)? {
+    /// Largura extra desenhada à direita do notch quando colapsado (0 = só o recorte).
+    /// Usada para acomodar o timer ao lado do notch. Ao mudar, reposiciona o painel
+    /// caso ele esteja colapsado no momento.
+    var collapsedTrailingWidth: CGFloat = 0 {
+        didSet {
+            guard oldValue != collapsedTrailingWidth, !isExpanded else { return }
+            applyCollapsedFrame(animated: true)
+        }
+    }
+
+    /// Conteúdo SwiftUI hospedado no painel. Recebe `isExpanded` e a largura física do
+    /// notch a cada mudança de estado.
+    var content: ((Bool, CGFloat) -> AnyView)? {
         didSet { refreshContent() }
     }
 
@@ -50,6 +61,8 @@ final class NotchWindowController: NSObject {
     private let hoverView: NotchHoverView
     private var hostingView: NSHostingView<AnyView>?
     private weak var currentScreen: NSScreen?
+    /// Largura do recorte físico do notch da tela atual (independente da extensão).
+    private var physicalNotchWidth: CGFloat = 0
 
     override init() {
         let panel = NSPanel(
@@ -83,10 +96,12 @@ final class NotchWindowController: NSObject {
         guard let notchFrame = NotchGeometry.notchFrame(on: screen) else { return }
 
         currentScreen = screen
+        physicalNotchWidth = notchFrame.width
         isExpanded = false
 
-        panel.setFrame(notchFrame, display: false)
-        hoverView.frame = NSRect(origin: .zero, size: notchFrame.size)
+        let frame = collapsedFrame(on: screen) ?? notchFrame
+        panel.setFrame(frame, display: false)
+        hoverView.frame = NSRect(origin: .zero, size: frame.size)
         layoutHostingView()
         refreshContent()
 
@@ -113,7 +128,7 @@ final class NotchWindowController: NSObject {
                 height: expandedSize.height
             )
         } else {
-            targetFrame = notchFrame
+            targetFrame = collapsedFrame(on: screen) ?? notchFrame
         }
 
         refreshContent()
@@ -135,10 +150,43 @@ final class NotchWindowController: NSObject {
         hostingView?.autoresizingMask = [.width, .height]
     }
 
+    /// Frame do painel colapsado: começa no recorte do notch e se estende para a
+    /// direita por `collapsedTrailingWidth`, sem ultrapassar a borda da tela.
+    private func collapsedFrame(on screen: NSScreen) -> NSRect? {
+        guard let notchFrame = NotchGeometry.notchFrame(on: screen) else { return nil }
+        let maxWidth = screen.frame.maxX - notchFrame.minX
+        let width = min(notchFrame.width + max(0, collapsedTrailingWidth), maxWidth)
+        return NSRect(x: notchFrame.minX, y: notchFrame.minY, width: width, height: notchFrame.height)
+    }
+
+    private func applyCollapsedFrame(animated: Bool) {
+        guard !isExpanded, let screen = currentScreen,
+              let frame = collapsedFrame(on: screen) else { return }
+
+        refreshContent()
+
+        if animated {
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = 0.2
+                context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+                panel.animator().setFrame(frame, display: true)
+            } completionHandler: { [weak self] in
+                Task { @MainActor in
+                    self?.hoverView.frame = NSRect(origin: .zero, size: frame.size)
+                    self?.layoutHostingView()
+                }
+            }
+        } else {
+            panel.setFrame(frame, display: true)
+            hoverView.frame = NSRect(origin: .zero, size: frame.size)
+            layoutHostingView()
+        }
+    }
+
     private func refreshContent() {
         guard let content else { return }
 
-        let rootView = content(isExpanded)
+        let rootView = content(isExpanded, physicalNotchWidth)
 
         if let hostingView {
             hostingView.rootView = rootView

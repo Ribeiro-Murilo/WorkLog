@@ -24,6 +24,14 @@ final class MenuBarViewModel {
         return "\(project.name) • \(elapsed.compactMenuBarString(showSeconds: showSeconds))"
     }
 
+    /// Tempo decorrido compacto (ex.: "45 min", "1:23") quando há timer rodando; `nil`
+    /// caso contrário. Usado no badge ao lado do notch.
+    var compactElapsed: String? {
+        guard isRunning else { return nil }
+        let showSeconds = (try? settingsRepository.current().showSeconds) ?? true
+        return elapsed.compactMenuBarString(showSeconds: showSeconds)
+    }
+
     init(
         timerService: TimerServiceProtocol,
         projectRepository: ProjectRepositoryProtocol,

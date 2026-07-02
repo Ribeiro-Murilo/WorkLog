@@ -47,7 +47,10 @@ final class DependencyContainer {
         self.launchAtLoginService = LaunchAtLoginService()
         self.shortcutsService = ShortcutsService(repository: shortcutBindingRepository)
         self.backupService = BackupService(projectRepository: projectRepository, sessionRepository: sessionRepository)
-        self.displayModeManager = DisplayModeManager(settingsRepository: settingsRepository)
+        self.displayModeManager = DisplayModeManager(
+            settingsRepository: settingsRepository,
+            timerService: self.timerService
+        )
     }
 
     static func live() -> DependencyContainer {

@@ -19,6 +19,8 @@ struct WorkLogApp: App {
         self.dependencies = dependencies
         dependencies.displayModeManager.configureNotchContent {
             MenuBarPopoverView().environment(\.dependencies, dependencies)
+        } collapsedTrailing: {
+            NotchTimerBadge().environment(\.dependencies, dependencies)
         }
         appDelegate.onDidFinishLaunching = { [dependencies] in
             dependencies.displayModeManager.refresh()
