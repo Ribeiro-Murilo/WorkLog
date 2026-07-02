@@ -6,8 +6,47 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		2C32F182E919877514CD9091 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9B0D161A3610ABF40ECF2713 /* Cocoa.framework */; };
+		3FBF3B0A9C569FB286702BCB /* ValidationServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 885699812B28C73B397E7F73 /* ValidationServiceTests.swift */; };
+		3FC02749FC25EA0FA5C6655C /* TestSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A3684D2E814BE8A7CB60830 /* TestSupport.swift */; };
+		553C8D3CE14DBDE8F5F41692 /* ProjectRepositoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F84FBE2E23B029E05AD27A3 /* ProjectRepositoryTests.swift */; };
+		6A8D05D7648C0E3D919578A4 /* WorkLogUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BA9F93E257B85AC26C489C5 /* WorkLogUITests.swift */; };
+		93E4F7539B01302464E90AC2 /* ExportServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9AE95D03B0C6CC3A2DE1348 /* ExportServiceTests.swift */; };
+		A2656A0725A4180213E50CD2 /* TimerServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 907B5B1440546A179EB23481 /* TimerServiceTests.swift */; };
+		ADAA7A174E5F2741CBB871A4 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9B0D161A3610ABF40ECF2713 /* Cocoa.framework */; };
+		EBB78F17A1B35C37A09DBCCA /* SessionRepositoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96A14599AA7E5C2481CD72AD /* SessionRepositoryTests.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		92FF09749F30A6F80170082D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 6208E2CB2FF576270008B252 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 6208E2D22FF576270008B252;
+			remoteInfo = WorkLog;
+		};
+		CAB10FD89A4A799A71F33431 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 6208E2CB2FF576270008B252 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 6208E2D22FF576270008B252;
+			remoteInfo = WorkLog;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
 		6208E2D32FF576270008B252 /* WorkLog.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WorkLog.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		7F84FBE2E23B029E05AD27A3 /* ProjectRepositoryTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ProjectRepositoryTests.swift; sourceTree = "<group>"; };
+		885699812B28C73B397E7F73 /* ValidationServiceTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ValidationServiceTests.swift; sourceTree = "<group>"; };
+		8BA9F93E257B85AC26C489C5 /* WorkLogUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkLogUITests.swift; sourceTree = "<group>"; };
+		907B5B1440546A179EB23481 /* TimerServiceTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TimerServiceTests.swift; sourceTree = "<group>"; };
+		96A14599AA7E5C2481CD72AD /* SessionRepositoryTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SessionRepositoryTests.swift; sourceTree = "<group>"; };
+		9A3684D2E814BE8A7CB60830 /* TestSupport.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TestSupport.swift; sourceTree = "<group>"; };
+		9B0D161A3610ABF40ECF2713 /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.0.sdk/System/Library/Frameworks/Cocoa.framework; sourceTree = DEVELOPER_DIR; };
+		A0E7B19D107F33FA6A2AEA51 /* WorkLogUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = WorkLogUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		A58EAF096C0862644188C215 /* WorkLogTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = WorkLogTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		A9AE95D03B0C6CC3A2DE1348 /* ExportServiceTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ExportServiceTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -26,14 +65,41 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		8FB51740EFF2671D3B45D553 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2C32F182E919877514CD9091 /* Cocoa.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B1E418FF5523CF411B99B91C /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				ADAA7A174E5F2741CBB871A4 /* Cocoa.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		3E052CD60A895C6441F79328 /* WorkLogUITests */ = {
+			isa = PBXGroup;
+			children = (
+				8BA9F93E257B85AC26C489C5 /* WorkLogUITests.swift */,
+			);
+			path = WorkLogUITests;
+			sourceTree = "<group>";
+		};
 		6208E2CA2FF576270008B252 = {
 			isa = PBXGroup;
 			children = (
 				6208E2D52FF576270008B252 /* WorkLog */,
 				6208E2D42FF576270008B252 /* Products */,
+				E7DC0E5595419E9EAE381F99 /* Frameworks */,
+				A4244497E68BC83DA2FCED42 /* WorkLogTests */,
+				3E052CD60A895C6441F79328 /* WorkLogUITests */,
 			);
 			sourceTree = "<group>";
 		};
@@ -41,8 +107,39 @@
 			isa = PBXGroup;
 			children = (
 				6208E2D32FF576270008B252 /* WorkLog.app */,
+				A58EAF096C0862644188C215 /* WorkLogTests.xctest */,
+				A0E7B19D107F33FA6A2AEA51 /* WorkLogUITests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		A4244497E68BC83DA2FCED42 /* WorkLogTests */ = {
+			isa = PBXGroup;
+			children = (
+				A9AE95D03B0C6CC3A2DE1348 /* ExportServiceTests.swift */,
+				7F84FBE2E23B029E05AD27A3 /* ProjectRepositoryTests.swift */,
+				96A14599AA7E5C2481CD72AD /* SessionRepositoryTests.swift */,
+				9A3684D2E814BE8A7CB60830 /* TestSupport.swift */,
+				907B5B1440546A179EB23481 /* TimerServiceTests.swift */,
+				885699812B28C73B397E7F73 /* ValidationServiceTests.swift */,
+			);
+			path = WorkLogTests;
+			sourceTree = "<group>";
+		};
+		E7DC0E5595419E9EAE381F99 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				E8EF2A5D01EC13F47AFD21F9 /* OS X */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		E8EF2A5D01EC13F47AFD21F9 /* OS X */ = {
+			isa = PBXGroup;
+			children = (
+				9B0D161A3610ABF40ECF2713 /* Cocoa.framework */,
+			);
+			name = "OS X";
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -64,11 +161,45 @@
 				6208E2D52FF576270008B252 /* WorkLog */,
 			);
 			name = WorkLog;
-			packageProductDependencies = (
-			);
 			productName = WorkLog;
 			productReference = 6208E2D32FF576270008B252 /* WorkLog.app */;
 			productType = "com.apple.product-type.application";
+		};
+		8828F8E1AEB6B0EE5B3EF0C0 /* WorkLogUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 85F59D40DA93E9EF753F01B3 /* Build configuration list for PBXNativeTarget "WorkLogUITests" */;
+			buildPhases = (
+				65F131B2A57F482B9FDBB3D3 /* Sources */,
+				8FB51740EFF2671D3B45D553 /* Frameworks */,
+				B50E95A9134F4AB37D55A09B /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				6BA98541DB858D3B811B0232 /* PBXTargetDependency */,
+			);
+			name = WorkLogUITests;
+			productName = WorkLogUITests;
+			productReference = A0E7B19D107F33FA6A2AEA51 /* WorkLogUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		FB37FB56654EB2380FA5A33E /* WorkLogTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8075C777A32827EBE1FABB35 /* Build configuration list for PBXNativeTarget "WorkLogTests" */;
+			buildPhases = (
+				C2AA548F19C0A1ACDDF3A9BC /* Sources */,
+				B1E418FF5523CF411B99B91C /* Frameworks */,
+				4F195F163FC28BF47753C787 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				A3E53A3AF56F9ED95F9E077F /* PBXTargetDependency */,
+			);
+			name = WorkLogTests;
+			productName = WorkLogTests;
+			productReference = A58EAF096C0862644188C215 /* WorkLogTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
 		};
 /* End PBXNativeTarget section */
 
@@ -100,12 +231,28 @@
 			projectRoot = "";
 			targets = (
 				6208E2D22FF576270008B252 /* WorkLog */,
+				FB37FB56654EB2380FA5A33E /* WorkLogTests */,
+				8828F8E1AEB6B0EE5B3EF0C0 /* WorkLogUITests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		4F195F163FC28BF47753C787 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		6208E2D12FF576270008B252 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B50E95A9134F4AB37D55A09B /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -122,9 +269,84 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		65F131B2A57F482B9FDBB3D3 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6A8D05D7648C0E3D919578A4 /* WorkLogUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C2AA548F19C0A1ACDDF3A9BC /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				93E4F7539B01302464E90AC2 /* ExportServiceTests.swift in Sources */,
+				553C8D3CE14DBDE8F5F41692 /* ProjectRepositoryTests.swift in Sources */,
+				EBB78F17A1B35C37A09DBCCA /* SessionRepositoryTests.swift in Sources */,
+				3FC02749FC25EA0FA5C6655C /* TestSupport.swift in Sources */,
+				A2656A0725A4180213E50CD2 /* TimerServiceTests.swift in Sources */,
+				3FBF3B0A9C569FB286702BCB /* ValidationServiceTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		6BA98541DB858D3B811B0232 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = WorkLog;
+			target = 6208E2D22FF576270008B252 /* WorkLog */;
+			targetProxy = 92FF09749F30A6F80170082D /* PBXContainerItemProxy */;
+		};
+		A3E53A3AF56F9ED95F9E077F /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = WorkLog;
+			target = 6208E2D22FF576270008B252 /* WorkLog */;
+			targetProxy = CAB10FD89A4A799A71F33431 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		0F4AA2013DCF740D0D92C6DE /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = RibeiroWorkes.WorkLogUITests;
+				PRODUCT_MODULE_NAME = WorkLogUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = WorkLog;
+			};
+			name = Debug;
+		};
+		1957DD50B8703531BDBD4DB6 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = RibeiroWorkes.WorkLogTests;
+				PRODUCT_MODULE_NAME = WorkLogTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/WorkLog.app/Contents/MacOS/WorkLog";
+			};
+			name = Release;
+		};
 		6208E2DE2FF576290008B252 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -255,6 +477,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_LSUIElement = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -285,6 +508,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_LSUIElement = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -300,6 +524,45 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		73B493D921C20691D348CAA0 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = RibeiroWorkes.WorkLogTests;
+				PRODUCT_MODULE_NAME = WorkLogTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/WorkLog.app/Contents/MacOS/WorkLog";
+			};
+			name = Debug;
+		};
+		7FAB387B75DE9C1B20BC1FF2 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = RibeiroWorkes.WorkLogUITests;
+				PRODUCT_MODULE_NAME = WorkLogUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = WorkLog;
 			};
 			name = Release;
 		};
@@ -320,6 +583,24 @@
 			buildConfigurations = (
 				6208E2E12FF576290008B252 /* Debug */,
 				6208E2E22FF576290008B252 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		8075C777A32827EBE1FABB35 /* Build configuration list for PBXNativeTarget "WorkLogTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1957DD50B8703531BDBD4DB6 /* Release */,
+				73B493D921C20691D348CAA0 /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		85F59D40DA93E9EF753F01B3 /* Build configuration list for PBXNativeTarget "WorkLogUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7FAB387B75DE9C1B20BC1FF2 /* Release */,
+				0F4AA2013DCF740D0D92C6DE /* Debug */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
