@@ -1,38 +1,12 @@
 import AppKit
 import SwiftUI
 
-/// View interna que hospeda o conteúdo SwiftUI e detecta hover via `NSTrackingArea`,
-/// já que o painel não se torna key apenas por causa do mouse.
-private final class NotchHoverView: NSView {
-    var onHoverChanged: ((Bool) -> Void)?
-
-    private var trackingArea: NSTrackingArea?
-
-    override func updateTrackingAreas() {
-        super.updateTrackingAreas()
-
-        if let trackingArea {
-            removeTrackingArea(trackingArea)
-        }
-
-        let area = NSTrackingArea(
-            rect: bounds,
-            options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
-            owner: self,
-            userInfo: nil
-        )
-        addTrackingArea(area)
-        trackingArea = area
-    }
-
-    override func mouseEntered(with event: NSEvent) {
-        onHoverChanged?(true)
-    }
-
-    override func mouseExited(with event: NSEvent) {
-        onHoverChanged?(false)
-    }
-}
+/// View interna que apenas hospeda o conteúdo SwiftUI. A detecção de hover NÃO usa
+/// `NSTrackingArea` desta view: como o painel muda de tamanho ao expandir, o
+/// enter/exit do tracking dispararia em loop (flicker) sempre que o frame animado
+/// deixasse o cursor momentaneamente de fora. A expansão é decidida por geometria
+/// estável em `NotchWindowController.evaluateHover()`.
+private final class NotchHoverView: NSView {}
 
 @MainActor
 final class NotchWindowController: NSObject {
@@ -63,6 +37,8 @@ final class NotchWindowController: NSObject {
     private weak var currentScreen: NSScreen?
     /// Largura do recorte físico do notch da tela atual (independente da extensão).
     private var physicalNotchWidth: CGFloat = 0
+    /// Poll de hover baseado na posição do mouse vs. zonas fixas (evita flicker).
+    private var hoverPollTask: Task<Void, Never>?
 
     override init() {
         let panel = NSPanel(
@@ -86,10 +62,6 @@ final class NotchWindowController: NSObject {
         self.hoverView = hoverView
 
         super.init()
-
-        hoverView.onHoverChanged = { [weak self] hovering in
-            self?.setExpanded(hovering)
-        }
     }
 
     func present(on screen: NSScreen) {
@@ -106,30 +78,55 @@ final class NotchWindowController: NSObject {
         refreshContent()
 
         panel.orderFrontRegardless()
+        startHoverPolling()
     }
 
     func dismiss() {
+        hoverPollTask?.cancel()
+        hoverPollTask = nil
         panel.orderOut(nil)
     }
 
+    private func startHoverPolling() {
+        hoverPollTask?.cancel()
+        hoverPollTask = Task { [weak self] in
+            while !Task.isCancelled {
+                self?.evaluateHover()
+                try? await Task.sleep(for: .milliseconds(80))
+            }
+        }
+    }
+
+    /// Decide expandir/colapsar comparando a posição do mouse com zonas fixas em
+    /// coordenadas de tela. A histerese (enquanto expandido, o cursor pode estar na
+    /// zona expandida OU na colapsada) mantém o badge do timer sempre dentro da área
+    /// ativa, eliminando o loop de abre/fecha.
+    private func evaluateHover() {
+        guard let screen = currentScreen,
+              let collapsed = collapsedFrame(on: screen),
+              let expanded = expandedFrame(on: screen) else { return }
+
+        let mouse = NSEvent.mouseLocation
+        let shouldExpand: Bool
+        if isExpanded {
+            shouldExpand = expanded.contains(mouse) || collapsed.contains(mouse)
+        } else {
+            shouldExpand = collapsed.contains(mouse)
+        }
+
+        if shouldExpand != isExpanded {
+            setExpanded(shouldExpand)
+        }
+    }
+
     private func setExpanded(_ expanded: Bool) {
-        guard isExpanded != expanded, let screen = currentScreen,
-              let notchFrame = NotchGeometry.notchFrame(on: screen) else { return }
+        guard isExpanded != expanded, let screen = currentScreen else { return }
 
         isExpanded = expanded
 
-        let targetFrame: NSRect
-        if expanded {
-            let centerX = notchFrame.midX
-            targetFrame = NSRect(
-                x: centerX - expandedSize.width / 2,
-                y: notchFrame.maxY - expandedSize.height,
-                width: expandedSize.width,
-                height: expandedSize.height
-            )
-        } else {
-            targetFrame = collapsedFrame(on: screen) ?? notchFrame
-        }
+        let targetFrame = expanded
+            ? (expandedFrame(on: screen) ?? panel.frame)
+            : (collapsedFrame(on: screen) ?? panel.frame)
 
         refreshContent()
 
@@ -157,6 +154,17 @@ final class NotchWindowController: NSObject {
         let maxWidth = screen.frame.maxX - notchFrame.minX
         let width = min(notchFrame.width + max(0, collapsedTrailingWidth), maxWidth)
         return NSRect(x: notchFrame.minX, y: notchFrame.minY, width: width, height: notchFrame.height)
+    }
+
+    /// Frame do painel expandido: `expandedSize` ancorado no topo-centro do notch.
+    private func expandedFrame(on screen: NSScreen) -> NSRect? {
+        guard let notchFrame = NotchGeometry.notchFrame(on: screen) else { return nil }
+        return NSRect(
+            x: notchFrame.midX - expandedSize.width / 2,
+            y: notchFrame.maxY - expandedSize.height,
+            width: expandedSize.width,
+            height: expandedSize.height
+        )
     }
 
     private func applyCollapsedFrame(animated: Bool) {
