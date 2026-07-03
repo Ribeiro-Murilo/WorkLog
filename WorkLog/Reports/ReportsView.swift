@@ -170,6 +170,13 @@ struct ReportsView: View {
         panel.nameFieldStringValue = "Relatorio.\(format.fileExtension)"
         panel.canCreateDirectories = true
 
+        // App acessório (`LSUIElement`): sem ativar a app e elevar o painel, o
+        // `NSSavePanel` abre sem foco/janela chave e dispara uma asserção do
+        // AppKit (EXC_BREAKPOINT). Ativar antes torna a exportação confiável.
+        NSApp.activate(ignoringOtherApps: true)
+        panel.level = .modalPanel
+        panel.makeKeyAndOrderFront(nil)
+
         guard panel.runModal() == .OK, let url = panel.url else { return }
 
         do {

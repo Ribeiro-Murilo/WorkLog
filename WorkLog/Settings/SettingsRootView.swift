@@ -157,7 +157,8 @@ struct SettingsRootView: View {
         let panel = NSSavePanel()
         panel.nameFieldStringValue = "WorkLog-Backup.json"
         panel.canCreateDirectories = true
-        guard panel.runModal() == .OK, let url = panel.url else { return }
+        panel.allowedContentTypes = [.json]
+        guard runPanel(panel) == .OK, let url = panel.url else { return }
         do {
             try dependencies.backupService.exportBackup(to: url)
         } catch {
@@ -170,12 +171,22 @@ struct SettingsRootView: View {
         panel.allowsMultipleSelection = false
         panel.canChooseDirectories = false
         panel.allowedContentTypes = [.json]
-        guard panel.runModal() == .OK, let url = panel.url else { return }
+        guard runPanel(panel) == .OK, let url = panel.url else { return }
         do {
             try dependencies.backupService.importBackup(from: url)
         } catch {
             backupErrorMessage = error.localizedDescription
         }
+    }
+
+    /// Exibe um `NSSavePanel`/`NSOpenPanel` a partir de um app acessório
+    /// (`LSUIElement`). Sem ativar a app e elevar o nível do painel, ele abre
+    /// atrás das outras janelas ou sem foco, impedindo exportar/importar.
+    private func runPanel(_ panel: NSSavePanel) -> NSApplication.ModalResponse {
+        NSApp.activate(ignoringOtherApps: true)
+        panel.level = .modalPanel
+        panel.makeKeyAndOrderFront(nil)
+        return panel.runModal()
     }
 
     private func setupIfNeeded() {
