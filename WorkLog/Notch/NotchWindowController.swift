@@ -8,6 +8,14 @@ import SwiftUI
 /// estável em `NotchWindowController.evaluateHover()`.
 private final class NotchHoverView: NSView {}
 
+/// Painel borderless que ainda pode virar *key window*. Sem isto, `canBecomeKey`
+/// retorna `false` (padrão para janelas borderless) e os controles SwiftUI dentro
+/// do notch expandido não recebem cliques. `.nonactivatingPanel` continua evitando
+/// que a app inteira seja ativada ao interagir.
+private final class NotchPanel: NSPanel {
+    override var canBecomeKey: Bool { true }
+}
+
 @MainActor
 final class NotchWindowController: NSObject {
     private(set) var isExpanded = false
@@ -41,7 +49,7 @@ final class NotchWindowController: NSObject {
     private var hoverPollTask: Task<Void, Never>?
 
     override init() {
-        let panel = NSPanel(
+        let panel = NotchPanel(
             contentRect: .zero,
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
@@ -127,6 +135,14 @@ final class NotchWindowController: NSObject {
         let targetFrame = expanded
             ? (expandedFrame(on: screen) ?? panel.frame)
             : (collapsedFrame(on: screen) ?? panel.frame)
+
+        // Torna o painel *key* ao expandir para que os controles SwiftUI recebam
+        // cliques; ao colapsar, devolve o foco para não reter a *key window*.
+        if expanded {
+            panel.makeKeyAndOrderFront(nil)
+        } else {
+            panel.resignKey()
+        }
 
         refreshContent()
 
