@@ -6,6 +6,12 @@ Aplicativo nativo para macOS, de uso pessoal, para controle de tempo em projetos
 
 Swift, SwiftUI, SwiftData, MenuBarExtra, Observation, Async/Await. AppKit e Carbon são usados apenas onde não há substituto em SwiftUI (recorte de tecla global, detecção de inatividade, exportação em PDF/Excel).
 
+## Versão Windows/Linux
+
+O app macOS nativo continua mantido nesta raiz em SwiftUI. A versão para outros sistemas operacionais fica em `desktop-electron/` e usa Electron, React, TypeScript e SQLite local.
+
+Essa segunda implementação preserva as regras centrais do WorkLog sem descontinuar a experiência nativa do macOS.
+
 ## Arquitetura
 
 MVVM + Repository Pattern + Dependency Injection, com separação completa de responsabilidades:

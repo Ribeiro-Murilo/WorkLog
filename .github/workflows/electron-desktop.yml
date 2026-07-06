@@ -1,0 +1,74 @@
+name: Electron Desktop
+
+on:
+  pull_request:
+    paths:
+      - "desktop-electron/**"
+      - ".github/workflows/electron-desktop.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "desktop-electron/**"
+      - ".github/workflows/electron-desktop.yml"
+  workflow_dispatch:
+
+jobs:
+  validate:
+    name: Validate Electron
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: desktop-electron
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: desktop-electron/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+
+  package-linux:
+    name: Package Linux
+    runs-on: ubuntu-latest
+    needs: validate
+    defaults:
+      run:
+        working-directory: desktop-electron
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: desktop-electron/package-lock.json
+      - run: npm ci
+      - run: npm run dist:linux
+      - uses: actions/upload-artifact@v4
+        with:
+          name: worklog-linux
+          path: desktop-electron/release/*
+
+  package-windows:
+    name: Package Windows
+    runs-on: windows-latest
+    needs: validate
+    defaults:
+      run:
+        working-directory: desktop-electron
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: desktop-electron/package-lock.json
+      - run: npm ci
+      - run: npm run dist:win
+      - uses: actions/upload-artifact@v4
+        with:
+          name: worklog-windows
+          path: desktop-electron/release/*

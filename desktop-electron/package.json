@@ -1,0 +1,74 @@
+{
+  "name": "worklog-electron",
+  "version": "0.1.0",
+  "description": "WorkLog desktop app for Windows and Linux.",
+  "homepage": "https://github.com/Ribeiro-Murilo/WorkLog",
+  "author": {
+    "name": "Murilo Ribeiro",
+    "email": "94489042+Ribeiro-Murilo@users.noreply.github.com"
+  },
+  "main": "dist-electron/electron/main.js",
+  "private": true,
+  "scripts": {
+    "dev:renderer": "vite --host 127.0.0.1 --port 5174",
+    "dev:electron": "VITE_DEV_SERVER_URL=http://127.0.0.1:5174 electron .",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "build:main": "tsc -p tsconfig.main.json",
+    "build:renderer": "vite build",
+    "build": "npm run typecheck && npm run build:main && npm run build:renderer",
+    "test": "vitest run",
+    "package": "npm run package:linux && npm run package:win",
+    "package:linux": "npm run build && electron-builder --linux --x64 --dir",
+    "package:win": "npm run build && electron-builder --win --x64 --dir",
+    "dist": "npm run dist:linux && npm run dist:win",
+    "dist:linux": "npm run build && electron-builder --linux --x64",
+    "dist:win": "npm run build && electron-builder --win --x64"
+  },
+  "dependencies": {
+    "lucide-react": "^0.468.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "sql.js": "^1.12.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "electron": "^33.3.1",
+    "@types/node": "^22.10.2",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@types/sql.js": "^1.4.9",
+    "@vitest/coverage-v8": "^2.1.8",
+    "electron-builder": "^25.1.8",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.6",
+    "vitest": "^2.1.8"
+  },
+  "build": {
+    "appId": "com.ribeiroworkes.worklog",
+    "productName": "WorkLog",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist-electron/**/*",
+      "dist/**/*",
+      "package.json",
+      "node_modules/sql.js/**/*"
+    ],
+    "linux": {
+      "icon": "assets/icon.png",
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Office"
+    },
+    "win": {
+      "icon": "assets/icon.png",
+      "signAndEditExecutable": false,
+      "target": [
+        "nsis"
+      ]
+    }
+  }
+}
