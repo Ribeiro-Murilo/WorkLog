@@ -33,9 +33,9 @@ final class NotchWindowController: NSObject {
         }
     }
 
-    /// Conteúdo SwiftUI hospedado no painel. Recebe `isExpanded` e a largura física do
-    /// notch a cada mudança de estado.
-    var content: ((Bool, CGFloat) -> AnyView)? {
+    /// Conteúdo SwiftUI hospedado no painel. Recebe `isExpanded`, a largura física do
+    /// notch e a altura física do notch a cada mudança de estado.
+    var content: ((Bool, CGFloat, CGFloat) -> AnyView)? {
         didSet { refreshContent() }
     }
 
@@ -45,6 +45,9 @@ final class NotchWindowController: NSObject {
     private weak var currentScreen: NSScreen?
     /// Largura do recorte físico do notch da tela atual (independente da extensão).
     private var physicalNotchWidth: CGFloat = 0
+    /// Altura do recorte físico do notch (usada para não desenhar conteúdo importante
+    /// atrás da câmera, já que o painel expandido é ancorado no topo físico da tela).
+    private var physicalNotchHeight: CGFloat = 0
     /// Poll de hover baseado na posição do mouse vs. zonas fixas (evita flicker).
     private var hoverPollTask: Task<Void, Never>?
 
@@ -77,6 +80,7 @@ final class NotchWindowController: NSObject {
 
         currentScreen = screen
         physicalNotchWidth = notchFrame.width
+        physicalNotchHeight = notchFrame.height
         isExpanded = false
 
         let frame = collapsedFrame(on: screen) ?? notchFrame
@@ -210,7 +214,7 @@ final class NotchWindowController: NSObject {
     private func refreshContent() {
         guard let content else { return }
 
-        let rootView = content(isExpanded, physicalNotchWidth)
+        let rootView = content(isExpanded, physicalNotchWidth, physicalNotchHeight)
 
         if let hostingView {
             hostingView.rootView = rootView

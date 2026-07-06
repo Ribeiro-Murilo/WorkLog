@@ -6,17 +6,23 @@ struct NotchContentView<ExpandedContent: View, CollapsedTrailing: View>: View {
     /// (preta, que se funde com o hardware) ocupa exatamente essa largura, e o que
     /// sobra à direita é usado pelo `collapsedTrailing` (ex.: o timer).
     let notchWidth: CGFloat
+    /// Altura do recorte físico do notch. O painel expandido é ancorado no topo físico
+    /// da tela, então o conteúdo expandido recebe esse tanto de padding no topo para não
+    /// ficar desenhado atrás da câmera (invisível) nem cortado pela borda da tela.
+    let notchHeight: CGFloat
     @ViewBuilder var expandedContent: () -> ExpandedContent
     @ViewBuilder var collapsedTrailing: () -> CollapsedTrailing
 
     init(
         isExpanded: Bool,
         notchWidth: CGFloat,
+        notchHeight: CGFloat,
         @ViewBuilder expandedContent: @escaping () -> ExpandedContent = { EmptyView() },
         @ViewBuilder collapsedTrailing: @escaping () -> CollapsedTrailing = { EmptyView() }
     ) {
         self.isExpanded = isExpanded
         self.notchWidth = notchWidth
+        self.notchHeight = notchHeight
         self.expandedContent = expandedContent
         self.collapsedTrailing = collapsedTrailing
     }
@@ -51,6 +57,7 @@ struct NotchContentView<ExpandedContent: View, CollapsedTrailing: View>: View {
             )
 
             expandedContent()
+                .padding(.top, notchHeight)
         }
     }
 

@@ -68,26 +68,38 @@ struct MenuBarPopoverView: View {
         }
     }
 
+    /// Altura máxima da lista rolável de projetos: cabem ~5 linhas antes de rolar, para
+    /// que favoritos + recentes nunca empurrem o rodapé (dashboard/config/sair) para
+    /// fora da área visível do notch, que tem altura fixa.
+    private static let projectListMaxHeight: CGFloat = 175
+
     @ViewBuilder
     private var listsSection: some View {
         if let menuBarViewModel {
-            if !menuBarViewModel.favoriteProjects.isEmpty {
-                sectionHeader("Favoritos")
-                ForEach(menuBarViewModel.favoriteProjects) { project in
-                    Button { startTimer(for: project) } label: {
-                        ProjectRowView(project: project, isActive: project.id == timerViewModel?.activeProject?.id)
+            if !menuBarViewModel.favoriteProjects.isEmpty || !menuBarViewModel.recentProjects.isEmpty {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 8) {
+                        if !menuBarViewModel.favoriteProjects.isEmpty {
+                            sectionHeader("Favoritos")
+                            ForEach(menuBarViewModel.favoriteProjects) { project in
+                                Button { startTimer(for: project) } label: {
+                                    ProjectRowView(project: project, isActive: project.id == timerViewModel?.activeProject?.id)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        if !menuBarViewModel.recentProjects.isEmpty {
+                            sectionHeader("Recentes")
+                            ForEach(menuBarViewModel.recentProjects) { project in
+                                Button { startTimer(for: project) } label: {
+                                    ProjectRowView(project: project, isActive: project.id == timerViewModel?.activeProject?.id)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
                     }
-                    .buttonStyle(.plain)
                 }
-            }
-            if !menuBarViewModel.recentProjects.isEmpty {
-                sectionHeader("Recentes")
-                ForEach(menuBarViewModel.recentProjects) { project in
-                    Button { startTimer(for: project) } label: {
-                        ProjectRowView(project: project, isActive: project.id == timerViewModel?.activeProject?.id)
-                    }
-                    .buttonStyle(.plain)
-                }
+                .frame(maxHeight: Self.projectListMaxHeight)
             }
 
             HStack {
