@@ -38,6 +38,36 @@ npm run dist:win
 
 Para desenvolvimento, rode `npm run dev:renderer` em um terminal e `npm run dev:electron` em outro.
 
+## Compilar para Windows
+
+Pré-requisitos:
+
+- Node.js 22 ou superior.
+- npm.
+- Windows para gerar o instalador final, ou o workflow **Electron Desktop** no GitHub Actions.
+
+Build e pacote desempacotado:
+
+```bash
+npm install
+npm run build
+npm run package:win
+```
+
+Saída:
+
+```text
+release/win-unpacked/WorkLog.exe
+```
+
+Instalador Windows:
+
+```bash
+npm run dist:win
+```
+
+Saída esperada em `release/`, gerada pelo Electron Builder. Em CI, o job **Package Windows** roda em `windows-latest` e publica o artefato `worklog-windows`.
+
 ## Estrutura
 
 ```text
