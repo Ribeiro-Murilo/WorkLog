@@ -15,6 +15,7 @@ final class PersistenceController {
         let schema = Schema([
             Project.self,
             Session.self,
+            Comment.self,
             AppSettings.self,
             ShortcutBinding.self,
         ])

@@ -19,6 +19,9 @@ final class Project {
     @Relationship(deleteRule: .cascade, inverse: \Session.project)
     var sessions: [Session]? = []
 
+    @Relationship(deleteRule: .cascade, inverse: \Comment.project)
+    var comments: [Comment]? = []
+
     /// Jornada padrão (em horas) usada para converter "Valor por dia" em valor por sessão.
     static let standardWorkdayHours: Double = 8
 

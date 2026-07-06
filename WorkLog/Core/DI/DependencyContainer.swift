@@ -7,6 +7,7 @@ final class DependencyContainer {
 
     let projectRepository: ProjectRepositoryProtocol
     let sessionRepository: SessionRepositoryProtocol
+    let commentRepository: CommentRepositoryProtocol
     let settingsRepository: SettingsRepositoryProtocol
     let shortcutBindingRepository: ShortcutBindingRepositoryProtocol
 
@@ -24,11 +25,13 @@ final class DependencyContainer {
 
         let projectRepository = ProjectRepository(modelContext: modelContext)
         let sessionRepository = SessionRepository(modelContext: modelContext)
+        let commentRepository = CommentRepository(modelContext: modelContext)
         let settingsRepository = SettingsRepository(modelContext: modelContext)
         let shortcutBindingRepository = ShortcutBindingRepository(modelContext: modelContext)
 
         self.projectRepository = projectRepository
         self.sessionRepository = sessionRepository
+        self.commentRepository = commentRepository
         self.settingsRepository = settingsRepository
         self.shortcutBindingRepository = shortcutBindingRepository
 

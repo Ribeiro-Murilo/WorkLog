@@ -10,6 +10,8 @@ struct ProjectDetailView: View {
     @State private var showingNewSessionForm = false
     @State private var sessionPendingEdit: Session?
     @State private var sessionPendingDeletion: Session?
+    @State private var newCommentText: String = ""
+    @State private var commentPendingDeletion: Comment?
 
     var body: some View {
         ScrollView {
@@ -18,6 +20,8 @@ struct ProjectDetailView: View {
                     header(viewModel)
                     Divider()
                     timerSection(viewModel)
+                    Divider()
+                    commentsSection(viewModel)
                     Divider()
                     sessionsSection(viewModel)
                 }
@@ -57,11 +61,24 @@ struct ProjectDetailView: View {
                 sessionPendingDeletion = nil
             }
         }
+        .alert(
+            "Excluir comentário?",
+            isPresented: Binding(get: { commentPendingDeletion != nil }, set: { if !$0 { commentPendingDeletion = nil } })
+        ) {
+            Button("Cancelar", role: .cancel) { commentPendingDeletion = nil }
+            Button("Excluir", role: .destructive) {
+                if let comment = commentPendingDeletion {
+                    viewModel?.deleteComment(comment)
+                }
+                commentPendingDeletion = nil
+            }
+        }
         .task {
             if viewModel == nil {
                 viewModel = ProjectDetailViewModel(
                     project: project,
                     sessionRepository: dependencies.sessionRepository,
+                    commentRepository: dependencies.commentRepository,
                     timerService: dependencies.timerService
                 )
             }
@@ -166,5 +183,70 @@ struct ProjectDetailView: View {
                 }
             }
         }
+    }
+
+    private func commentsSection(_ viewModel: ProjectDetailViewModel) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Comentários").font(.headline)
+
+            HStack(alignment: .top, spacing: 8) {
+                TextField("Adicionar um comentário…", text: $newCommentText, axis: .vertical)
+                    .textFieldStyle(.roundedBorder)
+                    .lineLimit(1...4)
+                    .onSubmit { addComment(viewModel) }
+                Button {
+                    addComment(viewModel)
+                } label: {
+                    Label("Adicionar", systemImage: "plus.circle")
+                }
+                .buttonStyle(.bordered)
+                .disabled(newCommentText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+
+            if viewModel.comments.isEmpty {
+                Text("Nenhum comentário ainda.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            } else {
+                VStack(spacing: 0) {
+                    ForEach(viewModel.comments) { comment in
+                        HStack(alignment: .top) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                HStack(spacing: 6) {
+                                    Text(comment.author)
+                                        .font(.caption)
+                                        .fontWeight(.semibold)
+                                    Text("•")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                    Text(comment.createdAt.formatted(date: .abbreviated, time: .shortened))
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Text(comment.text)
+                                    .font(.body)
+                            }
+                            Spacer()
+                            Button(role: .destructive) {
+                                commentPendingDeletion = comment
+                            } label: {
+                                Image(systemName: "trash")
+                            }
+                            .buttonStyle(.borderless)
+                            .frame(width: 24)
+                        }
+                        .padding(.vertical, 6)
+                        if comment.id != viewModel.comments.last?.id {
+                            Divider()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func addComment(_ viewModel: ProjectDetailViewModel) {
+        viewModel.addComment(text: newCommentText)
+        newCommentText = ""
     }
 }
