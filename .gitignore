@@ -3,3 +3,7 @@ DerivedData/
 *.xcuserstate
 xcuserdata/
 .DS_Store
+desktop-electron/node_modules
+desktop-electron/dist
+desktop-electron/dist-electron
+desktop-electron/release
