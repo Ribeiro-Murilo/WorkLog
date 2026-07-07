@@ -13,6 +13,7 @@
 		553C8D3CE14DBDE8F5F41692 /* ProjectRepositoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F84FBE2E23B029E05AD27A3 /* ProjectRepositoryTests.swift */; };
 		6A8D05D7648C0E3D919578A4 /* WorkLogUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BA9F93E257B85AC26C489C5 /* WorkLogUITests.swift */; };
 		93E4F7539B01302464E90AC2 /* ExportServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9AE95D03B0C6CC3A2DE1348 /* ExportServiceTests.swift */; };
+		FE01ABCD00000000000000F2 /* ReportsViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE01ABCD00000000000000F1 /* ReportsViewModelTests.swift */; };
 		A2656A0725A4180213E50CD2 /* TimerServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 907B5B1440546A179EB23481 /* TimerServiceTests.swift */; };
 		ADAA7A174E5F2741CBB871A4 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9B0D161A3610ABF40ECF2713 /* Cocoa.framework */; };
 		EBB78F17A1B35C37A09DBCCA /* SessionRepositoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96A14599AA7E5C2481CD72AD /* SessionRepositoryTests.swift */; };
@@ -47,6 +48,7 @@
 		A0E7B19D107F33FA6A2AEA51 /* WorkLogUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = WorkLogUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		A58EAF096C0862644188C215 /* WorkLogTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = WorkLogTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		A9AE95D03B0C6CC3A2DE1348 /* ExportServiceTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ExportServiceTests.swift; sourceTree = "<group>"; };
+		FE01ABCD00000000000000F1 /* ReportsViewModelTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ReportsViewModelTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -117,6 +119,7 @@
 			isa = PBXGroup;
 			children = (
 				A9AE95D03B0C6CC3A2DE1348 /* ExportServiceTests.swift */,
+				FE01ABCD00000000000000F1 /* ReportsViewModelTests.swift */,
 				7F84FBE2E23B029E05AD27A3 /* ProjectRepositoryTests.swift */,
 				96A14599AA7E5C2481CD72AD /* SessionRepositoryTests.swift */,
 				9A3684D2E814BE8A7CB60830 /* TestSupport.swift */,
@@ -282,6 +285,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				93E4F7539B01302464E90AC2 /* ExportServiceTests.swift in Sources */,
+				FE01ABCD00000000000000F2 /* ReportsViewModelTests.swift in Sources */,
 				553C8D3CE14DBDE8F5F41692 /* ProjectRepositoryTests.swift in Sources */,
 				EBB78F17A1B35C37A09DBCCA /* SessionRepositoryTests.swift in Sources */,
 				3FC02749FC25EA0FA5C6655C /* TestSupport.swift in Sources */,

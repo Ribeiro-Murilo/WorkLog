@@ -6,6 +6,8 @@ struct ReportsView: View {
     @State private var viewModel: ReportsViewModel?
     @State private var allProjects: [Project] = []
     @State private var exportErrorMessage: String?
+    @State private var isPresentingSavePreset = false
+    @State private var newPresetName = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -28,6 +30,16 @@ struct ReportsView: View {
             Button("OK", role: .cancel) { exportErrorMessage = nil }
         } message: {
             Text(exportErrorMessage ?? "")
+        }
+        .alert("Salvar tipo de relatório", isPresented: $isPresentingSavePreset) {
+            TextField("Nome", text: $newPresetName)
+            Button("Salvar") {
+                viewModel?.saveCurrentAsPreset(name: newPresetName)
+                newPresetName = ""
+            }
+            Button("Cancelar", role: .cancel) { newPresetName = "" }
+        } message: {
+            Text("As colunas e o agrupamento atuais serão salvos com este nome.")
         }
         .task { setup() }
     }
@@ -95,44 +107,84 @@ struct ReportsView: View {
 
                 Spacer()
             }
+
+            configBar(viewModel)
         }
         .padding(16)
     }
 
+    private func configBar(_ viewModel: ReportsViewModel) -> some View {
+        HStack {
+            Picker("Agrupamento", selection: Binding(
+                get: { viewModel.grouping },
+                set: { viewModel.grouping = $0 }
+            )) {
+                ForEach(ReportGrouping.allCases) { grouping in
+                    Text(grouping.displayName).tag(grouping)
+                }
+            }
+            .frame(maxWidth: 260)
+
+            Menu("Colunas") {
+                ForEach(ReportColumn.allCases) { column in
+                    Toggle(column.header, isOn: Binding(
+                        get: { viewModel.isColumnSelected(column) },
+                        set: { _ in viewModel.toggleColumn(column) }
+                    ))
+                }
+            }
+            .frame(maxWidth: 120)
+
+            Divider().frame(height: 18)
+
+            Picker("Tipo salvo", selection: Binding<ReportPreset?>(
+                get: { nil },
+                set: { if let preset = $0 { viewModel.applyPreset(preset) } }
+            )) {
+                Text("Selecionar…").tag(ReportPreset?.none)
+                ForEach(viewModel.presets) { preset in
+                    Text(preset.name).tag(ReportPreset?.some(preset))
+                }
+            }
+            .frame(maxWidth: 200)
+
+            Button("Salvar tipo…") {
+                isPresentingSavePreset = true
+            }
+            .buttonStyle(.bordered)
+
+            Menu {
+                if viewModel.presets.isEmpty {
+                    Text("Nenhum tipo salvo")
+                } else {
+                    ForEach(viewModel.presets) { preset in
+                        Button("Excluir \(preset.name)", role: .destructive) {
+                            viewModel.deletePreset(preset)
+                        }
+                    }
+                }
+            } label: {
+                Image(systemName: "trash")
+            }
+            .frame(maxWidth: 60)
+
+            Spacer()
+        }
+    }
+
     private func sessionsTable(_ viewModel: ReportsViewModel) -> some View {
-        Table(viewModel.sessions) {
-            TableColumn("Projeto") { session in
-                Text(session.project?.name ?? "—")
-            }
-            TableColumn("Cliente") { session in
-                Text(session.project?.client ?? "—")
-            }
-            TableColumn("Data") { session in
-                Text(DateFormatter.shortDate.string(from: session.date))
-            }
-            TableColumn("Início") { session in
-                Text(DateFormatter.shortTime.string(from: session.startTime))
-            }
-            TableColumn("Fim") { session in
-                Text(session.endTime.map { DateFormatter.shortTime.string(from: $0) } ?? "—")
-            }
-            TableColumn("Duração") { session in
-                Text(session.durationSeconds.formattedClock(showSeconds: true))
-                    .monospacedDigit()
-            }
-            TableColumn("Categoria") { session in
-                Text(session.category.displayName)
-            }
-            TableColumn("Status") { session in
-                Text(session.status.displayName)
-            }
-            TableColumn("Valor") { session in
-                Text(session.estimatedValue.currencyFormatted)
-                    .monospacedDigit()
+        let rows = viewModel.reportRows()
+        let columns = viewModel.selectedColumns.isEmpty ? ReportColumn.defaultSelection : viewModel.selectedColumns
+        return Table(rows) {
+            TableColumnForEach(columns) { column in
+                TableColumn(column.header) { row in
+                    Text(column.value(from: row))
+                        .monospacedDigit()
+                }
             }
         }
         .overlay {
-            if viewModel.sessions.isEmpty {
+            if rows.isEmpty {
                 ContentUnavailableView(
                     "Nenhuma sessão no período",
                     systemImage: "chart.bar.doc.horizontal",
@@ -190,7 +242,8 @@ struct ReportsView: View {
         if viewModel == nil {
             viewModel = ReportsViewModel(
                 sessionRepository: dependencies.sessionRepository,
-                exportService: dependencies.exportService
+                exportService: dependencies.exportService,
+                presetRepository: dependencies.reportPresetRepository
             )
         }
         allProjects = (try? dependencies.projectRepository.fetchAll(includeArchived: true)) ?? []

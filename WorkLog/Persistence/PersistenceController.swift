@@ -18,6 +18,7 @@ final class PersistenceController {
             Comment.self,
             AppSettings.self,
             ShortcutBinding.self,
+            ReportPreset.self,
         ])
         let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: inMemory)
 
