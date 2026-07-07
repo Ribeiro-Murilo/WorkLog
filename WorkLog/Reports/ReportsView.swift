@@ -8,6 +8,7 @@ struct ReportsView: View {
     @State private var exportErrorMessage: String?
     @State private var isPresentingSavePreset = false
     @State private var newPresetName = ""
+    @State private var isShowingColumns = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -125,15 +126,27 @@ struct ReportsView: View {
             }
             .frame(maxWidth: 260)
 
-            Menu("Colunas") {
-                ForEach(ReportColumn.allCases) { column in
-                    Toggle(column.header, isOn: Binding(
-                        get: { viewModel.isColumnSelected(column) },
-                        set: { _ in viewModel.toggleColumn(column) }
-                    ))
-                }
+            Button {
+                isShowingColumns.toggle()
+            } label: {
+                Label("Colunas", systemImage: "chevron.down")
+                    .labelStyle(.titleAndIcon)
             }
-            .frame(maxWidth: 120)
+            .popover(isPresented: $isShowingColumns, arrowEdge: .bottom) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Colunas do relatório")
+                        .font(.headline)
+                    ForEach(ReportColumn.allCases) { column in
+                        Toggle(column.header, isOn: Binding(
+                            get: { viewModel.isColumnSelected(column) },
+                            set: { _ in viewModel.toggleColumn(column) }
+                        ))
+                        .toggleStyle(.checkbox)
+                    }
+                }
+                .padding(16)
+                .frame(minWidth: 200, alignment: .leading)
+            }
 
             Divider().frame(height: 18)
 
