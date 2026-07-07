@@ -23,6 +23,9 @@ struct SettingsRootView: View {
             backupTab
                 .tabItem { Label("Backup", systemImage: "externaldrive") }
 
+            updatesTab
+                .tabItem { Label("Atualizações", systemImage: "arrow.down.circle") }
+
             aboutTab
                 .tabItem { Label("Sobre", systemImage: "info.circle") }
         }
@@ -177,8 +180,25 @@ struct SettingsRootView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
+    private var updatesTab: some View {
+        Form {
+            Section {
+                LabeledContent("Versão instalada", value: "\(appVersion) (\(appBuild))")
+                Button("Verificar atualizações…") {
+                    dependencies.updateService.checkForUpdates()
+                }
+                .disabled(!dependencies.updateService.canCheckForUpdates)
+            } footer: {
+                Text("A checagem é sempre manual — o WorkLog nunca busca atualizações sozinho em segundo plano. Se houver uma nova versão, você decide se instala.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .formStyle(.grouped)
+    }
+
     private var appVersion: String {
-        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.1.0"
     }
 
     private var appBuild: String {

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+    <channel>
+        <item>
+            <title>Versão 0.1.0</title>
+            <pubDate>ter, 07 jul 2026 19:29:23 +0000</pubDate>
+            <sparkle:version>0.1.0</sparkle:version>
+            <sparkle:shortVersionString>0.1.0</sparkle:shortVersionString>
+            <enclosure url="https://github.com/Ribeiro-Murilo/WorkLog/releases/download/v0.1.0/WorkLog-0.1.0.zip"
+                sparkle:edSignature="502wQBZtQCKSoFEMJmyvPj21hTaCwH/sy1zlvwgp8R2kMb3JA0jd6lXml1cISZHvcIcHjqsAH5GDYOuQvq5wBQ=="
+                length="7554488"
+                type="application/octet-stream" />
+        </item>
+        <title>WorkLog</title>
+        <link>https://raw.githubusercontent.com/Ribeiro-Murilo/WorkLog/main/appcast.xml</link>
+        <description>Atualizações do WorkLog</description>
+        <language>pt-BR</language>
+    </channel>
+</rss>

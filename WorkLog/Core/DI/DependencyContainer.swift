@@ -20,6 +20,7 @@ final class DependencyContainer {
     let launchAtLoginService: LaunchAtLoginServiceProtocol
     let shortcutsService: ShortcutsServiceProtocol
     let backupService: BackupServiceProtocol
+    let updateService: UpdateServiceProtocol
     let displayModeManager: DisplayModeManager
 
     init(modelContext: ModelContext) {
@@ -56,6 +57,7 @@ final class DependencyContainer {
         self.launchAtLoginService = LaunchAtLoginService()
         self.shortcutsService = ShortcutsService(repository: shortcutBindingRepository)
         self.backupService = BackupService(projectRepository: projectRepository, sessionRepository: sessionRepository)
+        self.updateService = UpdateService()
         self.displayModeManager = DisplayModeManager(
             settingsRepository: settingsRepository,
             timerService: self.timerService

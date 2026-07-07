@@ -6,7 +6,7 @@ ARCHIVE_PATH  := $(BUILD_DIR)/$(APP_NAME).xcarchive
 APP_PATH      := $(ARCHIVE_PATH)/Products/Applications/$(APP_NAME).app
 ZIP_PATH      := $(BUILD_DIR)/$(APP_NAME).zip
 
-.PHONY: help build release dist test run icon clean
+.PHONY: help build release dist publish test run icon clean
 
 help:
 	@echo "Alvos disponíveis:"
@@ -15,6 +15,7 @@ help:
 	@echo "  make test             - roda os testes unitários"
 	@echo "  make release          - gera o archive de Release (.xcarchive)"
 	@echo "  make dist             - gera o archive e empacota WorkLog.zip pronto para distribuir"
+	@echo "  make publish VERSION=x.y.z - builda, assina e prepara o appcast.xml para o Sparkle (ver scripts/release.sh)"
 	@echo "  make icon IMAGE=path  - gera o ícone do app a partir de uma imagem (PNG, de preferência quadrada)"
 	@echo "  make clean            - remove a pasta build/"
 
@@ -40,6 +41,13 @@ dist: release
 	@echo "Como o app não é assinado com uma conta Apple Developer paga,"
 	@echo "quem for abrir em outro Mac deve clicar com o botão direito no"
 	@echo "WorkLog.app e escolher \"Abrir\" na primeira execução."
+
+publish:
+	@if [ -z "$(VERSION)" ]; then \
+		echo "Uso: make publish VERSION=x.y.z"; \
+		exit 1; \
+	fi
+	./scripts/release.sh $(VERSION)
 
 icon:
 	@if [ -z "$(IMAGE)" ]; then \
