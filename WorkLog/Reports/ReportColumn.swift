@@ -1,4 +1,5 @@
 import Foundation
+import CoreGraphics
 
 /// Propriedades que podem ser incluídas em um relatório exportado.
 /// A ordem dos cases define a ordem padrão das colunas.
@@ -41,6 +42,28 @@ enum ReportColumn: String, CaseIterable, Identifiable, Codable {
     static let defaultSelection: [ReportColumn] = [
         .project, .client, .date, .startTime, .endTime, .duration, .category, .status, .value, .note,
     ]
+
+    /// Alinhamento usado na exportação em PDF: colunas numéricas ficam à direita.
+    var pdfAlignment: PDFColumnAlignment {
+        switch self {
+        case .duration, .value, .sessionCount:
+            return .trailing
+        default:
+            return .leading
+        }
+    }
+
+    /// Peso relativo de largura usado na exportação em PDF.
+    var pdfWeight: CGFloat {
+        switch self {
+        case .note, .description:
+            return 2
+        case .project, .client, .tags:
+            return 1.4
+        default:
+            return 1
+        }
+    }
 
     func value(from row: ReportRow) -> String {
         switch self {

@@ -19,6 +19,7 @@ final class PersistenceController {
             AppSettings.self,
             ShortcutBinding.self,
             ReportPreset.self,
+            Invoice.self,
         ])
         let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: inMemory)
 

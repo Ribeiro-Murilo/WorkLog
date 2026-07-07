@@ -21,6 +21,26 @@ enum ReportPeriod: String, CaseIterable, Identifiable {
         case .custom: return "Período personalizado"
         }
     }
+
+    /// Resolve o período em um `DateInterval` concreto a partir de uma data de referência.
+    func dateInterval(customStart: Date, customEnd: Date, referenceDate: Date = .now) -> DateInterval {
+        let calendar = Calendar.current
+        switch self {
+        case .today:
+            return calendar.dateInterval(of: .day, for: referenceDate) ?? DateInterval(start: referenceDate, end: referenceDate)
+        case .yesterday:
+            let yesterday = calendar.date(byAdding: .day, value: -1, to: referenceDate) ?? referenceDate
+            return calendar.dateInterval(of: .day, for: yesterday) ?? DateInterval(start: yesterday, end: yesterday)
+        case .week:
+            return calendar.dateInterval(of: .weekOfYear, for: referenceDate) ?? DateInterval(start: referenceDate, end: referenceDate)
+        case .month:
+            return calendar.dateInterval(of: .month, for: referenceDate) ?? DateInterval(start: referenceDate, end: referenceDate)
+        case .year:
+            return calendar.dateInterval(of: .year, for: referenceDate) ?? DateInterval(start: referenceDate, end: referenceDate)
+        case .custom:
+            return DateInterval(start: customStart, end: customEnd)
+        }
+    }
 }
 
 @MainActor
@@ -74,7 +94,7 @@ final class ReportsViewModel {
 
     func generate() {
         do {
-            let interval = dateInterval(for: period)
+            let interval = period.dateInterval(customStart: customStart, customEnd: customEnd)
             var results = try sessionRepository.fetchSessions(in: interval)
 
             if let projectFilter {
@@ -95,27 +115,6 @@ final class ReportsViewModel {
             sessions = results
         } catch {
             errorMessage = error.localizedDescription
-        }
-    }
-
-    private func dateInterval(for period: ReportPeriod) -> DateInterval {
-        let calendar = Calendar.current
-        let now = Date.now
-
-        switch period {
-        case .today:
-            return calendar.dateInterval(of: .day, for: now) ?? DateInterval(start: now, end: now)
-        case .yesterday:
-            let yesterday = calendar.date(byAdding: .day, value: -1, to: now) ?? now
-            return calendar.dateInterval(of: .day, for: yesterday) ?? DateInterval(start: yesterday, end: yesterday)
-        case .week:
-            return calendar.dateInterval(of: .weekOfYear, for: now) ?? DateInterval(start: now, end: now)
-        case .month:
-            return calendar.dateInterval(of: .month, for: now) ?? DateInterval(start: now, end: now)
-        case .year:
-            return calendar.dateInterval(of: .year, for: now) ?? DateInterval(start: now, end: now)
-        case .custom:
-            return DateInterval(start: customStart, end: customEnd)
         }
     }
 
@@ -200,7 +199,13 @@ final class ReportsViewModel {
         let rows = reportRows().map { row in
             columns.map { $0.value(from: row) }
         }
-        return ExportTable(title: "Relatório — \(period.displayName)", headers: headers, rows: rows)
+        return ExportTable(
+            title: "Relatório — \(period.displayName)",
+            headers: headers,
+            rows: rows,
+            alignments: columns.map(\.pdfAlignment),
+            weights: columns.map(\.pdfWeight)
+        )
     }
 
     func export(format: ExportFormat, to url: URL) throws {

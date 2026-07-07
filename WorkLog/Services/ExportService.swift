@@ -30,10 +30,36 @@ struct ExportTable {
     let title: String
     let headers: [String]
     let rows: [[String]]
+    let alignments: [PDFColumnAlignment]
+    let weights: [CGFloat]
+
+    init(title: String, headers: [String], rows: [[String]], alignments: [PDFColumnAlignment]? = nil, weights: [CGFloat]? = nil) {
+        self.title = title
+        self.headers = headers
+        self.rows = rows
+        self.alignments = alignments ?? headers.map { _ in .leading }
+        self.weights = weights ?? headers.map { _ in 1 }
+    }
+}
+
+/// Documento pronto para virar uma nota de faturamento em PDF.
+struct InvoiceDocument {
+    let issuerName: String
+    let issuerDetails: String
+    let invoiceNumber: String
+    let issueDate: Date
+    let client: String
+    let periodStart: Date
+    let periodEnd: Date
+    let lineItems: [InvoiceLineItem]
+    let totalDurationSeconds: TimeInterval
+    let totalValue: Decimal
+    let notes: String
 }
 
 protocol ExportServiceProtocol {
     func export(_ table: ExportTable, format: ExportFormat, to url: URL) throws
+    func exportInvoice(_ document: InvoiceDocument, to url: URL) throws
 }
 
 struct ExportService: ExportServiceProtocol {
@@ -114,59 +140,97 @@ struct ExportService: ExportServiceProtocol {
     // MARK: - PDF
 
     private func exportPDF(_ table: ExportTable, to url: URL) throws {
-        let pageRect = CGRect(x: 0, y: 0, width: 595, height: 842) // A4 em pontos
-        let margin: CGFloat = 36
-        let lineHeight: CGFloat = 18
+        let context = try PDFTableRenderer.makeContext(url: url)
 
-        guard let consumer = CGDataConsumer(url: url as CFURL),
-              let context = CGContext(consumer: consumer, mediaBox: nil, nil) else {
-            throw ExportError.pdfContextCreationFailed
+        let titleFont = NSFont.boldSystemFont(ofSize: 15)
+        let subtitleFont = NSFont.systemFont(ofSize: 9)
+        let generatedAt = DateFormatter.shortDate.string(from: .now) + " " + DateFormatter.shortTime.string(from: .now)
+
+        let columns = table.headers.enumerated().map { index, header in
+            PDFColumn(
+                title: header,
+                weight: index < table.weights.count ? table.weights[index] : 1,
+                alignment: index < table.alignments.count ? table.alignments[index] : .leading
+            )
         }
 
-        let titleAttributes: [NSAttributedString.Key: Any] = [
-            .font: NSFont.boldSystemFont(ofSize: 16)
-        ]
-        let headerAttributes: [NSAttributedString.Key: Any] = [
-            .font: NSFont.boldSystemFont(ofSize: 11)
-        ]
-        let bodyAttributes: [NSAttributedString.Key: Any] = [
-            .font: NSFont.systemFont(ofSize: 10)
+        PDFTableRenderer.render(
+            context: context,
+            headerLines: [
+                PDFTextLine(table.title, font: titleFont, spacingAfter: 2),
+                PDFTextLine("Gerado em \(generatedAt)", font: subtitleFont, color: .darkGray, spacingAfter: 6),
+            ],
+            columns: columns,
+            rows: table.rows,
+            footerNote: "WorkLog"
+        )
+
+        context.closePDF()
+    }
+
+    // MARK: - Invoice PDF
+
+    func exportInvoice(_ document: InvoiceDocument, to url: URL) throws {
+        let context = try PDFTableRenderer.makeContext(url: url)
+
+        let issuerNameFont = NSFont.boldSystemFont(ofSize: 15)
+        let issuerDetailsFont = NSFont.systemFont(ofSize: 9)
+        let invoiceTitleFont = NSFont.boldSystemFont(ofSize: 13)
+        let metaFont = NSFont.systemFont(ofSize: 9.5)
+        let clientLabelFont = NSFont.systemFont(ofSize: 9)
+        let clientNameFont = NSFont.boldSystemFont(ofSize: 12)
+
+        var headerLines: [PDFTextLine] = []
+        if !document.issuerName.isEmpty {
+            headerLines.append(PDFTextLine(document.issuerName, font: issuerNameFont, spacingAfter: 2))
+        }
+        if !document.issuerDetails.isEmpty {
+            headerLines.append(PDFTextLine(document.issuerDetails, font: issuerDetailsFont, color: .darkGray, spacingAfter: 10))
+        }
+        headerLines.append(PDFTextLine("Nota de faturamento \(document.invoiceNumber)", font: invoiceTitleFont, spacingAfter: 3))
+        headerLines.append(PDFTextLine("Emitida em \(DateFormatter.shortDate.string(from: document.issueDate))", font: metaFont, color: .darkGray, spacingAfter: 1))
+        headerLines.append(PDFTextLine(
+            "Período: \(DateFormatter.shortDate.string(from: document.periodStart)) a \(DateFormatter.shortDate.string(from: document.periodEnd))",
+            font: metaFont, color: .darkGray, spacingAfter: 10
+        ))
+        headerLines.append(PDFTextLine("Faturado a", font: clientLabelFont, color: .darkGray, spacingAfter: 1))
+        headerLines.append(PDFTextLine(document.client, font: clientNameFont, spacingAfter: 12))
+
+        let columns = [
+            PDFColumn(title: "Data", weight: 1, alignment: .leading),
+            PDFColumn(title: "Projeto", weight: 1.6, alignment: .leading),
+            PDFColumn(title: "Duração", weight: 1, alignment: .trailing),
+            PDFColumn(title: "Valor", weight: 1, alignment: .trailing),
         ]
 
-        let columnWidth = (pageRect.width - margin * 2) / CGFloat(max(table.headers.count, 1))
+        var rows = document.lineItems.map { item in
+            [
+                DateFormatter.shortDate.string(from: item.date),
+                item.projectName,
+                item.durationSeconds.formattedClock(showSeconds: false),
+                item.value.currencyFormatted,
+            ]
+        }
+        rows.append([
+            "", "Total",
+            document.totalDurationSeconds.formattedClock(showSeconds: false),
+            document.totalValue.currencyFormatted,
+        ])
 
-        func drawLine(_ columns: [String], attributes: [NSAttributedString.Key: Any], at y: CGFloat) {
-            NSGraphicsContext.saveGraphicsState()
-            let nsContext = NSGraphicsContext(cgContext: context, flipped: false)
-            NSGraphicsContext.current = nsContext
-            for (index, text) in columns.enumerated() {
-                let x = margin + CGFloat(index) * columnWidth
-                let string = NSAttributedString(string: text, attributes: attributes)
-                string.draw(at: CGPoint(x: x, y: y))
-            }
-            NSGraphicsContext.restoreGraphicsState()
+        var footerNote = "WorkLog"
+        if !document.notes.isEmpty {
+            footerNote = "\(document.notes) — WorkLog"
         }
 
-        var cursorY = pageRect.height - margin
-        context.beginPDFPage(nil)
-        drawLine([table.title], attributes: titleAttributes, at: cursorY)
-        cursorY -= lineHeight * 2
-        drawLine(table.headers, attributes: headerAttributes, at: cursorY)
-        cursorY -= lineHeight
+        PDFTableRenderer.render(
+            context: context,
+            headerLines: headerLines,
+            columns: columns,
+            rows: rows,
+            footerNote: footerNote,
+            boldRowIndices: [rows.count - 1]
+        )
 
-        for row in table.rows {
-            if cursorY < margin {
-                context.endPDFPage()
-                context.beginPDFPage(nil)
-                cursorY = pageRect.height - margin
-                drawLine(table.headers, attributes: headerAttributes, at: cursorY)
-                cursorY -= lineHeight
-            }
-            drawLine(row, attributes: bodyAttributes, at: cursorY)
-            cursorY -= lineHeight
-        }
-
-        context.endPDFPage()
         context.closePDF()
     }
 }

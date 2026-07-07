@@ -11,6 +11,13 @@ final class AppSettings {
     var timeFormat: TimeFormatPreference = TimeFormatPreference.twentyFourHour
     var displayMode: AppDisplayMode = AppDisplayMode.menuBar
     var lastBackupDate: Date?
+    /// Nome exibido no cabeçalho das notas de faturamento.
+    var invoiceIssuerName: String = ""
+    /// Dados livres do emissor (CPF/CNPJ, PIX, endereço) exibidos abaixo do nome na nota.
+    var invoiceIssuerDetails: String = ""
+    /// Último número de fatura emitido. Cresce de forma monotônica e nunca é reaproveitado,
+    /// mesmo que faturas sejam excluídas.
+    var lastInvoiceNumber: Int = 0
     var createdAt: Date = Date.now
     var updatedAt: Date = Date.now
 
@@ -20,7 +27,9 @@ final class AppSettings {
         showSeconds: Bool = true,
         theme: AppTheme = .system,
         timeFormat: TimeFormatPreference = .twentyFourHour,
-        displayMode: AppDisplayMode = .menuBar
+        displayMode: AppDisplayMode = .menuBar,
+        invoiceIssuerName: String = "",
+        invoiceIssuerDetails: String = ""
     ) {
         self.id = UUID()
         self.launchAtLogin = launchAtLogin
@@ -29,6 +38,8 @@ final class AppSettings {
         self.theme = theme
         self.timeFormat = timeFormat
         self.displayMode = displayMode
+        self.invoiceIssuerName = invoiceIssuerName
+        self.invoiceIssuerDetails = invoiceIssuerDetails
         self.createdAt = .now
         self.updatedAt = .now
     }

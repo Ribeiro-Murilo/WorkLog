@@ -11,6 +11,7 @@ final class DependencyContainer {
     let settingsRepository: SettingsRepositoryProtocol
     let shortcutBindingRepository: ShortcutBindingRepositoryProtocol
     let reportPresetRepository: ReportPresetRepositoryProtocol
+    let invoiceRepository: InvoiceRepositoryProtocol
 
     let validationService: ValidationServiceProtocol
     let idleDetectionService: IdleDetectionServiceProtocol
@@ -30,6 +31,7 @@ final class DependencyContainer {
         let settingsRepository = SettingsRepository(modelContext: modelContext)
         let shortcutBindingRepository = ShortcutBindingRepository(modelContext: modelContext)
         let reportPresetRepository = ReportPresetRepository(modelContext: modelContext)
+        let invoiceRepository = InvoiceRepository(modelContext: modelContext, settingsRepository: settingsRepository)
 
         self.projectRepository = projectRepository
         self.sessionRepository = sessionRepository
@@ -37,6 +39,7 @@ final class DependencyContainer {
         self.settingsRepository = settingsRepository
         self.shortcutBindingRepository = shortcutBindingRepository
         self.reportPresetRepository = reportPresetRepository
+        self.invoiceRepository = invoiceRepository
 
         let validationService = ValidationService()
         let idleDetectionService = IdleDetectionService(idleThresholdMinutes: 10)

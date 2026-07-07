@@ -18,6 +18,8 @@ struct DashboardView: View {
                 ProjectListView()
             case .reports:
                 ReportsView()
+            case .billing:
+                BillingView()
             }
         }
         .frame(minWidth: 760, minHeight: 480)

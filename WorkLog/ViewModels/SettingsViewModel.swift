@@ -16,6 +16,8 @@ final class SettingsViewModel {
     var theme: AppTheme = .system
     var timeFormat: TimeFormatPreference = .twentyFourHour
     var displayMode: AppDisplayMode = .menuBar
+    var invoiceIssuerName: String = ""
+    var invoiceIssuerDetails: String = ""
     private(set) var shortcutBindings: [ShortcutBinding] = []
     var errorMessage: String?
 
@@ -43,6 +45,8 @@ final class SettingsViewModel {
             theme = settings.theme
             timeFormat = settings.timeFormat
             displayMode = settings.displayMode
+            invoiceIssuerName = settings.invoiceIssuerName
+            invoiceIssuerDetails = settings.invoiceIssuerDetails
             shortcutBindings = try shortcutBindingRepository.fetchAll()
                 .sorted { $0.action.displayName < $1.action.displayName }
         } catch {
@@ -59,6 +63,8 @@ final class SettingsViewModel {
             settings.theme = theme
             settings.timeFormat = timeFormat
             settings.displayMode = displayMode
+            settings.invoiceIssuerName = invoiceIssuerName
+            settings.invoiceIssuerDetails = invoiceIssuerDetails
             try settingsRepository.save(settings)
 
             try launchAtLoginService.setEnabled(launchAtLogin)

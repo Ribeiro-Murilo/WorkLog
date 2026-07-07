@@ -17,6 +17,9 @@ struct SettingsRootView: View {
             shortcutsTab
                 .tabItem { Label("Atalhos", systemImage: "keyboard") }
 
+            billingTab
+                .tabItem { Label("Faturamento", systemImage: "doc.text") }
+
             backupTab
                 .tabItem { Label("Backup", systemImage: "externaldrive") }
 
@@ -105,6 +108,35 @@ struct SettingsRootView: View {
                             set: { viewModel.updateShortcut(action: binding.action, keyCombo: $0) }
                         ))
                     }
+                }
+            }
+            .formStyle(.grouped)
+        } else {
+            ProgressView()
+        }
+    }
+
+    @ViewBuilder
+    private var billingTab: some View {
+        if let viewModel {
+            Form {
+                Section {
+                    TextField("Nome do emissor", text: Binding(
+                        get: { viewModel.invoiceIssuerName },
+                        set: { viewModel.invoiceIssuerName = $0; viewModel.save() }
+                    ))
+                    TextEditor(text: Binding(
+                        get: { viewModel.invoiceIssuerDetails },
+                        set: { viewModel.invoiceIssuerDetails = $0; viewModel.save() }
+                    ))
+                    .frame(height: 80)
+                    .font(.callout)
+                } header: {
+                    Text("Emissor da nota")
+                } footer: {
+                    Text("Aparecem no cabeçalho das notas de faturamento. Ex.: CPF/CNPJ, PIX, endereço.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
             }
             .formStyle(.grouped)
