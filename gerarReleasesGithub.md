@@ -1,7 +1,7 @@
 ```
-make publish VERSION=x.x.x
+make publish VERSION=0.1.1
 
-git tag vx.x.x
+git tag v0.1.1
 git push origin main --tags
-gh release create vx.x.x build/WorkLog-x.x.x.zip --title "vx.x.x" --notes-file GITHUB_RELEASE_NOTES.md
+gh release create v0.1.1 build/WorkLog-0.1.1.zip --title "v0.1.1" --notes-file GITHUB_RELEASE_NOTES.md
 ```

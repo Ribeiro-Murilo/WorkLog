@@ -1,59 +1,27 @@
-# WorkLog Release Notes
+# WorkLog v0.1.1 Release Notes
 
-This release introduces the core WorkLog experience for tracking project time, reviewing productivity, generating reports, and preparing billing documents from completed work sessions.
+This release focuses on the exported PDF documents (reports and billing invoices), giving them a professional, client-ready design and fixing a rendering bug.
 
-## Summary
+## Bug Fixes
 
-- Native dashboard organized with a macOS sidebar and a dedicated Summary view.
-- Time totals for today, the current week, the current month, and all tracked time.
-- Active and archived project counters.
-- Recent session list for quickly reviewing the latest recorded work intervals.
-- Most-used projects ranking based on accumulated tracked time.
-- Time breakdowns by category, client, and project.
-- All summary calculations are based on closed sessions, using paused and completed work intervals.
+- Fixed the report/invoice title being clipped at the top of the PDF. The document was rendered on the default US Letter page while the layout assumed A4, pushing the header above the real page edge. The PDF now uses a proper A4 media box.
 
-## Projects
+## PDF Redesign
 
-- Project list with search, filtering, sorting, and native macOS navigation.
-- Project creation and editing with name, client, daily rate, category, status, tags, and description.
-- Project statuses supported: Active, In Progress, Blocked, and Ready.
-- Project categories supported: Work and Personal.
-- Archive and unarchive actions for keeping inactive projects available without cluttering the active list.
-- Favorite project support for faster access from the app workflow.
-- Project deletion with confirmation, including removal of associated sessions.
-- Project detail view with client, description, tags, status, category, daily rate, accumulated time, and accumulated value.
-- Built-in project timer controls to start, pause, and stop tracked work.
-- One active timer rule: starting a timer for a project closes the currently running interval before creating a new one.
-- Manual session creation and session editing for corrections or backfilled time entries.
-- Session deletion from the project detail screen.
-- Project comments with author, timestamp, and delete support.
-- Estimated project value calculation based on the configured daily rate and an 8-hour standard workday.
+- Redesigned the invoice and report PDFs with a professional, client-ready layout.
+- Two-column letterhead: issuer/title on the left, invoice metadata (number, issue date, billing period) aligned on the right, separated by a brand accent rule.
+- Clean "ledger" style table: brand-colored uppercase headers with an accent underline, thin row separators, no vertical grid lines, and no heavy zebra striping.
+- Tabular (monospaced) figures so durations and currency values align cleanly.
+- Emphasized total row with an accent tint and highlighted totals.
+- Refined footer with a divider, optional note on the left, and app name plus page number on the right.
+- Introduced a restrained brand accent color used across headers, rules, and totals.
 
-## Reports
+## Optional App Logo in PDFs
 
-- Report screen with filters for period, project, category, session status, client, and tag.
-- Supported report periods: today, yesterday, current week, current month, current year, and custom date ranges.
-- Detailed report mode with one row per tracked session.
-- Grouped report mode by project and day, consolidating duration, estimated value, notes, and session count.
-- Configurable report columns, including project, client, date, start time, end time, duration, session count, category, status, value, note, tags, and description.
-- Saved report presets for reusing column selections and grouping mode.
-- Preset management with save, apply, and delete actions.
-- Report totals for tracked duration and estimated value.
-- Export support for CSV, Excel-compatible XML, and PDF.
-- Exported reports use the currently selected filters, grouping mode, and visible columns.
+- Added an option to include the app logo in exported PDFs (both reports and invoices).
+- The logo is placed at the top-left, leading the letterhead, with rounded corners.
+- Optional and off by default. Toggle it in Settings → General ("Incluir logo do app nos PDFs").
 
-## Billing
+## Version
 
-- Billing screen for generating invoices from tracked project sessions.
-- Client-based invoice generation using the clients already registered in projects.
-- Billing periods aligned with report periods, including custom date ranges.
-- Invoice preview table grouped by project and day.
-- Preview totals for billable duration and estimated value before invoice generation.
-- Invoice notes support.
-- Overlap detection to prevent generating multiple invoices for the same client and overlapping period.
-- Sequential invoice numbering using the `FAT-0001` format.
-- Invoice history with number, client, period, value, and status.
-- Invoice status toggle between Pending and Paid.
-- Invoice deletion from the billing history.
-- PDF export for generated invoices.
-- Invoice PDFs include issuer information from settings, invoice number, issue date, client, billing period, line items, totals, notes, and WorkLog footer.
+- Bumped app version to 0.1.1.
