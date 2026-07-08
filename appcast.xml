@@ -4,17 +4,17 @@
         <item>
             <title>Versão 0.1.1</title>
             <pubDate>Wed, 08 Jul 2026 21:47:14 +0000</pubDate>
-            <sparkle:version>0.1.1</sparkle:version>
+            <sparkle:version>2</sparkle:version>
             <sparkle:shortVersionString>0.1.1</sparkle:shortVersionString>
             <enclosure url="https://github.com/Ribeiro-Murilo/WorkLog/releases/download/v0.1.1/WorkLog-0.1.1.zip"
-                sparkle:edSignature="2KkIib+Y+vIDrq1J4VSsb926YDG9XyJ4tJP+zPP0kdy3pbeOU4gpI/eYaUN0LUMSMiIc4YlHEFtqkSFuJ1DMDg=="
-                length="7565372"
+                sparkle:edSignature="O/+hnv+V2M8A67nvgCitFQHrLUO5DqBVuoYC7pk/IDXnKVi1+A8cojkyVGu6XGubXabQ/kXTkqR8X8iHFYUXBw=="
+                length="7565370"
                 type="application/octet-stream" />
         </item>
         <item>
             <title>Versão 0.1.0</title>
             <pubDate>ter, 07 jul 2026 19:29:23 +0000</pubDate>
-            <sparkle:version>0.1.0</sparkle:version>
+            <sparkle:version>1</sparkle:version>
             <sparkle:shortVersionString>0.1.0</sparkle:shortVersionString>
             <enclosure url="https://github.com/Ribeiro-Murilo/WorkLog/releases/download/v0.1.0/WorkLog-0.1.0.zip"
                 sparkle:edSignature="502wQBZtQCKSoFEMJmyvPj21hTaCwH/sy1zlvwgp8R2kMb3JA0jd6lXml1cISZHvcIcHjqsAH5GDYOuQvq5wBQ=="
