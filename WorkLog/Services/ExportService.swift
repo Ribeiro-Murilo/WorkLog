@@ -58,19 +58,34 @@ struct InvoiceDocument {
 }
 
 protocol ExportServiceProtocol {
-    func export(_ table: ExportTable, format: ExportFormat, to url: URL) throws
-    func exportInvoice(_ document: InvoiceDocument, to url: URL) throws
+    func export(_ table: ExportTable, format: ExportFormat, to url: URL, includeLogo: Bool) throws
+    func exportInvoice(_ document: InvoiceDocument, to url: URL, includeLogo: Bool) throws
+}
+
+extension ExportServiceProtocol {
+    func export(_ table: ExportTable, format: ExportFormat, to url: URL) throws {
+        try export(table, format: format, to: url, includeLogo: false)
+    }
+
+    func exportInvoice(_ document: InvoiceDocument, to url: URL) throws {
+        try exportInvoice(document, to: url, includeLogo: false)
+    }
 }
 
 struct ExportService: ExportServiceProtocol {
-    func export(_ table: ExportTable, format: ExportFormat, to url: URL) throws {
+    /// Logo do app usado nos PDFs quando o usuário ativa a opção.
+    private func pdfLogo(_ include: Bool) -> NSImage? {
+        include ? NSImage(named: "Logo") : nil
+    }
+
+    func export(_ table: ExportTable, format: ExportFormat, to url: URL, includeLogo: Bool) throws {
         switch format {
         case .csv:
             try exportCSV(table, to: url)
         case .excel:
             try exportExcelXML(table, to: url)
         case .pdf:
-            try exportPDF(table, to: url)
+            try exportPDF(table, to: url, includeLogo: includeLogo)
         }
     }
 
@@ -139,12 +154,12 @@ struct ExportService: ExportServiceProtocol {
 
     // MARK: - PDF
 
-    private func exportPDF(_ table: ExportTable, to url: URL) throws {
+    private func exportPDF(_ table: ExportTable, to url: URL, includeLogo: Bool) throws {
         let context = try PDFTableRenderer.makeContext(url: url)
 
-        let titleFont = NSFont.boldSystemFont(ofSize: 15)
+        let titleFont = NSFont.boldSystemFont(ofSize: 18)
         let subtitleFont = NSFont.systemFont(ofSize: 9)
-        let generatedAt = DateFormatter.shortDate.string(from: .now) + " " + DateFormatter.shortTime.string(from: .now)
+        let generatedAt = DateFormatter.shortDate.string(from: .now) + " às " + DateFormatter.shortTime.string(from: .now)
 
         let columns = table.headers.enumerated().map { index, header in
             PDFColumn(
@@ -156,13 +171,14 @@ struct ExportService: ExportServiceProtocol {
 
         PDFTableRenderer.render(
             context: context,
-            headerLines: [
-                PDFTextLine(table.title, font: titleFont, spacingAfter: 2),
-                PDFTextLine("Gerado em \(generatedAt)", font: subtitleFont, color: .darkGray, spacingAfter: 6),
+            leftHeader: [
+                PDFTextLine(table.title, font: titleFont, color: PDFTableRenderer.ink, spacingAfter: 3),
+                PDFTextLine("Gerado em \(generatedAt)", font: subtitleFont, color: PDFTableRenderer.muted, spacingAfter: 0),
             ],
             columns: columns,
             rows: table.rows,
-            footerNote: "WorkLog"
+            footerNote: "",
+            logo: pdfLogo(includeLogo)
         )
 
         context.closePDF()
@@ -170,31 +186,45 @@ struct ExportService: ExportServiceProtocol {
 
     // MARK: - Invoice PDF
 
-    func exportInvoice(_ document: InvoiceDocument, to url: URL) throws {
+    func exportInvoice(_ document: InvoiceDocument, to url: URL, includeLogo: Bool) throws {
         let context = try PDFTableRenderer.makeContext(url: url)
 
-        let issuerNameFont = NSFont.boldSystemFont(ofSize: 15)
-        let issuerDetailsFont = NSFont.systemFont(ofSize: 9)
-        let invoiceTitleFont = NSFont.boldSystemFont(ofSize: 13)
-        let metaFont = NSFont.systemFont(ofSize: 9.5)
-        let clientLabelFont = NSFont.systemFont(ofSize: 9)
-        let clientNameFont = NSFont.boldSystemFont(ofSize: 12)
+        let ink = PDFTableRenderer.ink
+        let muted = PDFTableRenderer.muted
+        let accent = PDFTableRenderer.accent
 
-        var headerLines: [PDFTextLine] = []
+        let issuerNameFont = NSFont.boldSystemFont(ofSize: 16)
+        let issuerDetailsFont = NSFont.systemFont(ofSize: 9)
+        let labelFont = NSFont.systemFont(ofSize: 8.5, weight: .semibold)
+        let invoiceNumberFont = NSFont.boldSystemFont(ofSize: 15)
+        let metaFont = NSFont.systemFont(ofSize: 9.5)
+        let clientNameFont = NSFont.boldSystemFont(ofSize: 13)
+
+        // Coluna esquerda: emissor.
+        var leftHeader: [PDFTextLine] = []
         if !document.issuerName.isEmpty {
-            headerLines.append(PDFTextLine(document.issuerName, font: issuerNameFont, spacingAfter: 2))
+            leftHeader.append(PDFTextLine(document.issuerName, font: issuerNameFont, color: ink, spacingAfter: 4))
         }
         if !document.issuerDetails.isEmpty {
-            headerLines.append(PDFTextLine(document.issuerDetails, font: issuerDetailsFont, color: .darkGray, spacingAfter: 10))
+            leftHeader.append(PDFTextLine(document.issuerDetails, font: issuerDetailsFont, color: muted, spacingAfter: 0))
         }
-        headerLines.append(PDFTextLine("Nota de faturamento \(document.invoiceNumber)", font: invoiceTitleFont, spacingAfter: 3))
-        headerLines.append(PDFTextLine("Emitida em \(DateFormatter.shortDate.string(from: document.issueDate))", font: metaFont, color: .darkGray, spacingAfter: 1))
-        headerLines.append(PDFTextLine(
-            "Período: \(DateFormatter.shortDate.string(from: document.periodStart)) a \(DateFormatter.shortDate.string(from: document.periodEnd))",
-            font: metaFont, color: .darkGray, spacingAfter: 10
-        ))
-        headerLines.append(PDFTextLine("Faturado a", font: clientLabelFont, color: .darkGray, spacingAfter: 1))
-        headerLines.append(PDFTextLine(document.client, font: clientNameFont, spacingAfter: 12))
+
+        // Coluna direita: identificação da nota, alinhada à direita.
+        let rightHeader: [PDFTextLine] = [
+            PDFTextLine("NOTA DE FATURAMENTO", font: labelFont, color: accent, alignment: .trailing, tracking: 1, spacingAfter: 4),
+            PDFTextLine(document.invoiceNumber, font: invoiceNumberFont, color: ink, alignment: .trailing, spacingAfter: 6),
+            PDFTextLine("Emitida em \(DateFormatter.shortDate.string(from: document.issueDate))", font: metaFont, color: muted, alignment: .trailing, spacingAfter: 2),
+            PDFTextLine(
+                "Período: \(DateFormatter.shortDate.string(from: document.periodStart)) a \(DateFormatter.shortDate.string(from: document.periodEnd))",
+                font: metaFont, color: muted, alignment: .trailing, spacingAfter: 0
+            ),
+        ]
+
+        // Bloco de largura total abaixo da régua: destinatário.
+        let subHeader: [PDFTextLine] = [
+            PDFTextLine("FATURADO A", font: labelFont, color: accent, tracking: 1, spacingAfter: 3),
+            PDFTextLine(document.client, font: clientNameFont, color: ink, spacingAfter: 0),
+        ]
 
         let columns = [
             PDFColumn(title: "Data", weight: 1, alignment: .leading),
@@ -217,18 +247,16 @@ struct ExportService: ExportServiceProtocol {
             document.totalValue.currencyFormatted,
         ])
 
-        var footerNote = "WorkLog"
-        if !document.notes.isEmpty {
-            footerNote = "\(document.notes) — WorkLog"
-        }
-
         PDFTableRenderer.render(
             context: context,
-            headerLines: headerLines,
+            leftHeader: leftHeader,
+            rightHeader: rightHeader,
+            subHeader: subHeader,
             columns: columns,
             rows: rows,
-            footerNote: footerNote,
-            boldRowIndices: [rows.count - 1]
+            footerNote: document.notes,
+            totalRowIndex: rows.count - 1,
+            logo: pdfLogo(includeLogo)
         )
 
         context.closePDF()

@@ -18,6 +18,7 @@ final class SettingsViewModel {
     var displayMode: AppDisplayMode = .menuBar
     var invoiceIssuerName: String = ""
     var invoiceIssuerDetails: String = ""
+    var includeLogoInPDF: Bool = false
     private(set) var shortcutBindings: [ShortcutBinding] = []
     var errorMessage: String?
 
@@ -47,6 +48,7 @@ final class SettingsViewModel {
             displayMode = settings.displayMode
             invoiceIssuerName = settings.invoiceIssuerName
             invoiceIssuerDetails = settings.invoiceIssuerDetails
+            includeLogoInPDF = settings.includeLogoInPDF
             shortcutBindings = try shortcutBindingRepository.fetchAll()
                 .sorted { $0.action.displayName < $1.action.displayName }
         } catch {
@@ -65,6 +67,7 @@ final class SettingsViewModel {
             settings.displayMode = displayMode
             settings.invoiceIssuerName = invoiceIssuerName
             settings.invoiceIssuerDetails = invoiceIssuerDetails
+            settings.includeLogoInPDF = includeLogoInPDF
             try settingsRepository.save(settings)
 
             try launchAtLoginService.setEnabled(launchAtLogin)

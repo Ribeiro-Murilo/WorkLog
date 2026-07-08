@@ -256,7 +256,8 @@ struct ReportsView: View {
             viewModel = ReportsViewModel(
                 sessionRepository: dependencies.sessionRepository,
                 exportService: dependencies.exportService,
-                presetRepository: dependencies.reportPresetRepository
+                presetRepository: dependencies.reportPresetRepository,
+                settingsRepository: dependencies.settingsRepository
             )
         }
         allProjects = (try? dependencies.projectRepository.fetchAll(includeArchived: true)) ?? []

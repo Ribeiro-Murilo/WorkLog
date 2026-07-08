@@ -93,6 +93,11 @@ struct SettingsRootView: View {
                         Text(format.displayName).tag(format)
                     }
                 }
+
+                Toggle("Incluir logo do app nos PDFs", isOn: Binding(
+                    get: { viewModel.includeLogoInPDF },
+                    set: { viewModel.includeLogoInPDF = $0; viewModel.save() }
+                ))
             }
             .formStyle(.grouped)
         } else {

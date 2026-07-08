@@ -49,6 +49,7 @@ final class ReportsViewModel {
     private let sessionRepository: SessionRepositoryProtocol
     private let exportService: ExportServiceProtocol
     private let presetRepository: ReportPresetRepositoryProtocol?
+    private let settingsRepository: SettingsRepositoryProtocol?
 
     var period: ReportPeriod = .today {
         didSet { generate() }
@@ -83,11 +84,13 @@ final class ReportsViewModel {
     init(
         sessionRepository: SessionRepositoryProtocol,
         exportService: ExportServiceProtocol,
-        presetRepository: ReportPresetRepositoryProtocol? = nil
+        presetRepository: ReportPresetRepositoryProtocol? = nil,
+        settingsRepository: SettingsRepositoryProtocol? = nil
     ) {
         self.sessionRepository = sessionRepository
         self.exportService = exportService
         self.presetRepository = presetRepository
+        self.settingsRepository = settingsRepository
         loadPresets()
         generate()
     }
@@ -209,7 +212,8 @@ final class ReportsViewModel {
     }
 
     func export(format: ExportFormat, to url: URL) throws {
-        try exportService.export(exportTable(), format: format, to: url)
+        let includeLogo = (try? settingsRepository?.current().includeLogoInPDF) ?? false
+        try exportService.export(exportTable(), format: format, to: url, includeLogo: includeLogo)
     }
 
     // MARK: - Presets

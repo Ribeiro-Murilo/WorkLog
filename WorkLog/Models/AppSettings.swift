@@ -18,6 +18,9 @@ final class AppSettings {
     /// Último número de fatura emitido. Cresce de forma monotônica e nunca é reaproveitado,
     /// mesmo que faturas sejam excluídas.
     var lastInvoiceNumber: Int = 0
+    /// Quando ativo, inclui o logo do app no canto superior direito dos PDFs
+    /// (relatórios e notas de faturamento). Opcional e desligado por padrão.
+    var includeLogoInPDF: Bool = false
     var createdAt: Date = Date.now
     var updatedAt: Date = Date.now
 

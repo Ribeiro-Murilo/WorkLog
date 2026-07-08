@@ -182,7 +182,7 @@ final class BillingViewModel {
             totalValue: invoice.totalValue,
             notes: invoice.notes
         )
-        try exportService.exportInvoice(document, to: url)
+        try exportService.exportInvoice(document, to: url, includeLogo: settings.includeLogoInPDF)
     }
 
     #if DEBUG
