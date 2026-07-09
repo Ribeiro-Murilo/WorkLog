@@ -24,6 +24,14 @@ cd "$ROOT_DIR"
 echo "==> Atualizando MARKETING_VERSION para $VERSION"
 sed -i '' "s/MARKETING_VERSION = [0-9.]*;/MARKETING_VERSION = $VERSION;/g" WorkLog.xcodeproj/project.pbxproj
 
+# O Sparkle compara versões pelo CFBundleVersion (CURRENT_PROJECT_VERSION), que
+# precisa ser um inteiro monotonicamente crescente. O MARKETING_VERSION (0.1.1)
+# é só o texto exibido ao usuário e NÃO é usado na comparação.
+CURRENT_BUILD=$(grep -m1 -o 'CURRENT_PROJECT_VERSION = [0-9]*;' WorkLog.xcodeproj/project.pbxproj | grep -o '[0-9]*')
+BUILD_NUMBER=$((CURRENT_BUILD + 1))
+echo "==> Incrementando CURRENT_PROJECT_VERSION: $CURRENT_BUILD -> $BUILD_NUMBER"
+sed -i '' "s/CURRENT_PROJECT_VERSION = [0-9]*;/CURRENT_PROJECT_VERSION = $BUILD_NUMBER;/g" WorkLog.xcodeproj/project.pbxproj
+
 echo "==> Compilando Release"
 rm -rf "$BUILD_DIR"
 mkdir -p "$BUILD_DIR"
@@ -50,7 +58,7 @@ ITEM=$(cat <<EOF
         <item>
             <title>Versão $VERSION</title>
             <pubDate>$PUB_DATE</pubDate>
-            <sparkle:version>$VERSION</sparkle:version>
+            <sparkle:version>$BUILD_NUMBER</sparkle:version>
             <sparkle:shortVersionString>$VERSION</sparkle:shortVersionString>
             <enclosure url="$DOWNLOAD_URL"
                 sparkle:edSignature="$SIGNATURE"
