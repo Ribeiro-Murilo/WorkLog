@@ -1,27 +1,24 @@
-# WorkLog v0.1.1 Release Notes
+## O que mudou
 
-This release focuses on the exported PDF documents (reports and billing invoices), giving them a professional, client-ready design and fixing a rendering bug.
+- aceita o primeiro clique no conteúdo SwiftUI do notch após troca de foco
+- torna o painel `key` somente na transição normal de recolhido para expandido
+- mantém o estado visual controlado exclusivamente pela posição do mouse
+- remove callbacks tardios de animação que podiam restaurar frames antigos de hit-testing
+- mantém o hosting view sincronizado com o tamanho do painel por autoresizing
 
-## Bug Fixes
+## Causa raiz
 
-- Fixed the report/invoice title being clipped at the top of the PDF. The document was rendered on the default US Letter page while the layout assumed A4, pushing the header above the real page edge. The PDF now uses a proper A4 media box.
+O painel podia continuar visualmente expandido depois de perder o estado de `key window`, enquanto completions de animações anteriores podiam aplicar frames obsoletos à área clicável. A tentativa inicial de recuperar foco continuamente também criou um ciclo de expandir/recolher sobre a área física do notch; agora a perda de foco não altera `isExpanded`, evitando o piscar.
 
-## PDF Redesign
+## Impacto
 
-- Redesigned the invoice and report PDFs with a professional, client-ready layout.
-- Two-column letterhead: issuer/title on the left, invoice metadata (number, issue date, billing period) aligned on the right, separated by a brand accent rule.
-- Clean "ledger" style table: brand-colored uppercase headers with an accent underline, thin row separators, no vertical grid lines, and no heavy zebra striping.
-- Tabular (monospaced) figures so durations and currency values align cleanly.
-- Emphasized total row with an accent tint and highlighted totals.
-- Refined footer with a divider, optional note on the left, and app name plus page number on the right.
-- Introduced a restrained brand accent color used across headers, rules, and totals.
+Os botões do notch continuam respondendo após sessões longas, troca de aplicativo, Space e sleep/wake, sem exigir parar o timer ou reiniciar o WorkLog.
 
-## Optional App Logo in PDFs
+## Validação
 
-- Added an option to include the app logo in exported PDFs (both reports and invoices).
-- The logo is placed at the top-left, leading the letterhead, with rounded corners.
-- Optional and off by default. Toggle it in Settings → General ("Incluir logo do app nos PDFs").
+- `git diff --check`
+- `TimerServiceTests`: 7/7 passaram
+- `NotchWindowController.swift` compilou sem os avisos de concorrência anteriores
+- revisão paralela do comportamento AppKit sem bloqueadores
 
-## Version
-
-- Bumped app version to 0.1.1.
+O build global permanece bloqueado por um erro preexistente em `ReportsView.swift:73`: `Project?` é usado em um `Picker` sem conformidade `Hashable`.
