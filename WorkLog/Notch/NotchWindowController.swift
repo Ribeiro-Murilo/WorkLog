@@ -6,7 +6,16 @@ import SwiftUI
 /// enter/exit do tracking dispararia em loop (flicker) sempre que o frame animado
 /// deixasse o cursor momentaneamente de fora. A expansão é decidida por geometria
 /// estável em `NotchWindowController.evaluateHover()`.
-private final class NotchHoverView: NSView {}
+private final class NotchHoverView: NSView {
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+}
+
+/// O primeiro clique precisa atravessar mesmo quando outro app ainda possui a janela
+/// key. Sem isso, o clique usado para reativar o painel pode ser apenas consumido pelo
+/// AppKit, sem chegar ao `Button` SwiftUI.
+private final class NotchHostingView: NSHostingView<AnyView> {
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+}
 
 /// Painel borderless que ainda pode virar *key window*. Sem isto, `canBecomeKey`
 /// retorna `false` (padrão para janelas borderless) e os controles SwiftUI dentro
@@ -17,7 +26,7 @@ private final class NotchPanel: NSPanel {
 }
 
 @MainActor
-final class NotchWindowController: NSObject {
+final class NotchWindowController: NSObject, NSWindowDelegate {
     private(set) var isExpanded = false
 
     /// Tamanho da área expandida, ancorada no topo-centro do notch.
@@ -67,12 +76,14 @@ final class NotchWindowController: NSObject {
         panel.hidesOnDeactivate = false
 
         let hoverView = NotchHoverView(frame: .zero)
+        hoverView.autoresizingMask = [.width, .height]
         panel.contentView = hoverView
 
         self.panel = panel
         self.hoverView = hoverView
 
         super.init()
+        panel.delegate = self
     }
 
     func present(on screen: NSScreen) {
@@ -126,8 +137,17 @@ final class NotchWindowController: NSObject {
             shouldExpand = collapsed.contains(mouse)
         }
 
-        if shouldExpand != isExpanded {
-            setExpanded(shouldExpand)
+        if shouldExpand {
+            if !isExpanded {
+                setExpanded(true)
+            } else if !panel.isKeyWindow {
+                // O macOS pode remover o estado key após troca de app/Space ou
+                // sleep/wake sem alterar nosso estado visual. Revalida a janela
+                // enquanto o cursor continua sobre o painel expandido.
+                panel.makeKeyAndOrderFront(nil)
+            }
+        } else if isExpanded {
+            setExpanded(false)
         }
     }
 
@@ -154,11 +174,6 @@ final class NotchWindowController: NSObject {
             context.duration = 0.28
             context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
             panel.animator().setFrame(targetFrame, display: true)
-        } completionHandler: { [weak self] in
-            Task { @MainActor in
-                self?.hoverView.frame = NSRect(origin: .zero, size: targetFrame.size)
-                self?.layoutHostingView()
-            }
         }
     }
 
@@ -198,11 +213,6 @@ final class NotchWindowController: NSObject {
                 context.duration = 0.2
                 context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
                 panel.animator().setFrame(frame, display: true)
-            } completionHandler: { [weak self] in
-                Task { @MainActor in
-                    self?.hoverView.frame = NSRect(origin: .zero, size: frame.size)
-                    self?.layoutHostingView()
-                }
             }
         } else {
             panel.setFrame(frame, display: true)
@@ -219,11 +229,19 @@ final class NotchWindowController: NSObject {
         if let hostingView {
             hostingView.rootView = rootView
         } else {
-            let hostingView = NSHostingView(rootView: rootView)
+            let hostingView = NotchHostingView(rootView: rootView)
             hostingView.frame = hoverView.bounds
             hostingView.autoresizingMask = [.width, .height]
             hoverView.addSubview(hostingView)
             self.hostingView = hostingView
         }
+    }
+
+    /// Se outra janela tomar o foco enquanto o notch está aberto, recolhe o painel.
+    /// O próximo hover executará uma expansão completa e recuperará a janela key, em
+    /// vez de manter conteúdo visível porém sem hit-testing funcional.
+    func windowDidResignKey(_ notification: Notification) {
+        guard notification.object as? NSPanel === panel, isExpanded else { return }
+        setExpanded(false)
     }
 }
