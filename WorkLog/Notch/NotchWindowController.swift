@@ -180,9 +180,7 @@ final class NotchWindowController: NSObject, NSWindowDelegate {
             : (collapsedFrame(on: screen) ?? panel.frame)
 
         logger.notice(
-            "transition expanded=\(expanded) keyBefore=\(self.panel.isKeyWindow) " +
-            "from=\(NSStringFromRect(self.panel.frame), privacy: .public) " +
-            "to=\(NSStringFromRect(targetFrame), privacy: .public)"
+            "transition expanded=\(expanded) keyBefore=\(self.panel.isKeyWindow) from=\(NSStringFromRect(self.panel.frame), privacy: .public) to=\(NSStringFromRect(targetFrame), privacy: .public)"
         )
 
         // Torna o painel *key* ao expandir para que os controles SwiftUI recebam
@@ -296,18 +294,14 @@ final class NotchWindowController: NSObject, NSWindowDelegate {
         lastDiagnosticState = state
         let topDistance = screen.frame.maxY - mouse.y
         logger.debug(
-            "state \(state, privacy: .public) mouse=\(NSStringFromPoint(mouse), privacy: .public) " +
-            "topDistance=\(topDistance)"
+            "state \(state, privacy: .public) mouse=\(NSStringFromPoint(mouse), privacy: .public) topDistance=\(topDistance)"
         )
     }
 
     private func logMouseEvent(_ event: NSEvent, hitView: NSView?) {
         let hitViewName = hitView.map { String(describing: type(of: $0)) } ?? "nil"
         logger.notice(
-            "mouseEvent type=\(String(describing: event.type), privacy: .public) " +
-            "location=\(NSStringFromPoint(event.locationInWindow), privacy: .public) " +
-            "hit=\(hitViewName, privacy: .public) expanded=\(self.isExpanded) " +
-            "key=\(self.panel.isKeyWindow)"
+            "mouseEvent type=\(String(describing: event.type), privacy: .public) location=\(NSStringFromPoint(event.locationInWindow), privacy: .public) hit=\(hitViewName, privacy: .public) expanded=\(self.isExpanded) key=\(self.panel.isKeyWindow)"
         )
     }
 
