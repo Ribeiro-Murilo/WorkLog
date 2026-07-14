@@ -26,7 +26,7 @@ private final class NotchPanel: NSPanel {
 }
 
 @MainActor
-final class NotchWindowController: NSObject, NSWindowDelegate {
+final class NotchWindowController: NSObject {
     private(set) var isExpanded = false
 
     /// Tamanho da área expandida, ancorada no topo-centro do notch.
@@ -83,7 +83,6 @@ final class NotchWindowController: NSObject, NSWindowDelegate {
         self.hoverView = hoverView
 
         super.init()
-        panel.delegate = self
     }
 
     func present(on screen: NSScreen) {
@@ -137,17 +136,8 @@ final class NotchWindowController: NSObject, NSWindowDelegate {
             shouldExpand = collapsed.contains(mouse)
         }
 
-        if shouldExpand {
-            if !isExpanded {
-                setExpanded(true)
-            } else if !panel.isKeyWindow {
-                // O macOS pode remover o estado key após troca de app/Space ou
-                // sleep/wake sem alterar nosso estado visual. Revalida a janela
-                // enquanto o cursor continua sobre o painel expandido.
-                panel.makeKeyAndOrderFront(nil)
-            }
-        } else if isExpanded {
-            setExpanded(false)
+        if shouldExpand != isExpanded {
+            setExpanded(shouldExpand)
         }
     }
 
@@ -235,13 +225,5 @@ final class NotchWindowController: NSObject, NSWindowDelegate {
             hoverView.addSubview(hostingView)
             self.hostingView = hostingView
         }
-    }
-
-    /// Se outra janela tomar o foco enquanto o notch está aberto, recolhe o painel.
-    /// O próximo hover executará uma expansão completa e recuperará a janela key, em
-    /// vez de manter conteúdo visível porém sem hit-testing funcional.
-    func windowDidResignKey(_ notification: Notification) {
-        guard notification.object as? NSPanel === panel, isExpanded else { return }
-        setExpanded(false)
     }
 }
