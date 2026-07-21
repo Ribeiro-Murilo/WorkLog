@@ -2,6 +2,16 @@
 <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
     <channel>
         <item>
+            <title>Versão 0.1.3</title>
+            <pubDate>Tue, 21 Jul 2026 19:23:36 +0000</pubDate>
+            <sparkle:version>6</sparkle:version>
+            <sparkle:shortVersionString>0.1.3</sparkle:shortVersionString>
+            <enclosure url="https://github.com/Ribeiro-Murilo/WorkLog/releases/download/v0.1.3/WorkLog-0.1.3.zip"
+                sparkle:edSignature="XFA9TBu/GOcg2pLAJRZDlkmyQMY1Tje0CRsAgIoGUuqTWnZSOtAZ55fzCkuE5VBJe6B1OouNyqxN35g6g0KnDQ=="
+                length="7578363"
+                type="application/octet-stream" />
+        </item>
+        <item>
             <title>Versão 0.1.2</title>
             <pubDate>Tue, 14 Jul 2026 22:30:49 +0000</pubDate>
             <sparkle:version>5</sparkle:version>

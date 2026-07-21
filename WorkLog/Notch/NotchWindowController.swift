@@ -72,6 +72,10 @@ final class NotchWindowController: NSObject, NSWindowDelegate {
     private var physicalNotchHeight: CGFloat = 0
     /// Poll de hover baseado na posição do mouse vs. zonas fixas (evita flicker).
     private var hoverPollTask: Task<Void, Never>?
+    /// O macOS pode retirar a key window de um painel não-ativante mesmo enquanto
+    /// o cursor continua sobre o notch expandido. Evita uma sequência de chamadas
+    /// de foco a cada ciclo do poll, que pode causar flicker.
+    private var lastKeyRecoveryAt = Date.distantPast
     private let logger = Logger(subsystem: "RibeiroWorkes.WorkLog", category: "NotchInteraction")
     private var lastDiagnosticState: String?
 
@@ -126,6 +130,7 @@ final class NotchWindowController: NSObject, NSWindowDelegate {
     func dismiss() {
         hoverPollTask?.cancel()
         hoverPollTask = nil
+        lastKeyRecoveryAt = .distantPast
         logger.notice("dismiss expanded=\(self.isExpanded) key=\(self.panel.isKeyWindow)")
         panel.orderOut(nil)
     }
@@ -167,7 +172,25 @@ final class NotchWindowController: NSObject, NSWindowDelegate {
 
         if shouldExpand != isExpanded {
             setExpanded(shouldExpand)
+        } else if isExpanded && !panel.isKeyWindow {
+            recoverKeyWindowIfNeeded()
         }
+    }
+
+    /// Recupera a key window somente enquanto o cursor permanece na área expandida.
+    /// O intervalo evita disputar foco com o AppKit durante trocas de Space, wake ou
+    /// uma animação de abertura.
+    private func recoverKeyWindowIfNeeded() {
+        guard panel.isVisible else { return }
+
+        let now = Date()
+        guard now.timeIntervalSince(lastKeyRecoveryAt) >= 0.25 else { return }
+        lastKeyRecoveryAt = now
+
+        logger.notice(
+            "recoverKeyWindow expanded=\(self.isExpanded) frame=\(NSStringFromRect(self.panel.frame), privacy: .public)"
+        )
+        panel.makeKeyAndOrderFront(nil)
     }
 
     private func setExpanded(_ expanded: Bool) {
@@ -186,8 +209,10 @@ final class NotchWindowController: NSObject, NSWindowDelegate {
         // Torna o painel *key* ao expandir para que os controles SwiftUI recebam
         // cliques; ao colapsar, devolve o foco para não reter a *key window*.
         if expanded {
+            lastKeyRecoveryAt = Date()
             panel.makeKeyAndOrderFront(nil)
         } else {
+            lastKeyRecoveryAt = .distantPast
             panel.resignKey()
         }
 
