@@ -6,6 +6,46 @@ Aplicativo nativo para macOS, de uso pessoal, para controle de tempo em projetos
 
 Swift, SwiftUI, SwiftData, MenuBarExtra, Observation, Async/Await. AppKit e Carbon são usados apenas onde não há substituto em SwiftUI (recorte de tecla global, detecção de inatividade, exportação em PDF/Excel).
 
+## Versão Windows/Linux
+
+O app macOS nativo continua mantido nesta raiz em SwiftUI. A versão para outros sistemas operacionais fica em `desktop-electron/` e usa Electron, React, TypeScript e SQLite local.
+
+Essa segunda implementação preserva as regras centrais do WorkLog sem descontinuar a experiência nativa do macOS.
+
+### Como compilar a versão Windows
+
+A versão Windows é gerada a partir da pasta `desktop-electron/`.
+
+Pré-requisitos:
+
+- Node.js 22 ou superior.
+- npm.
+- Para gerar o instalador final `.exe`, prefira rodar em Windows ou pelo workflow **Electron Desktop** do GitHub Actions.
+
+Comandos:
+
+```bash
+cd desktop-electron
+npm install
+npm run build
+npm run package:win
+```
+
+O comando `npm run package:win` gera uma versão desempacotada em:
+
+```text
+desktop-electron/release/win-unpacked/WorkLog.exe
+```
+
+Para gerar o instalador Windows via Electron Builder:
+
+```bash
+cd desktop-electron
+npm run dist:win
+```
+
+O instalador será criado em `desktop-electron/release/`. No CI, o workflow `.github/workflows/electron-desktop.yml` já executa esse processo em `windows-latest` e publica o artefato `worklog-windows`.
+
 ## Arquitetura
 
 MVVM + Repository Pattern + Dependency Injection, com separação completa de responsabilidades:
