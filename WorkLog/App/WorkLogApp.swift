@@ -17,6 +17,7 @@ struct WorkLogApp: App {
     init() {
         let dependencies = DependencyContainer(modelContext: persistenceController.mainContext)
         self.dependencies = dependencies
+        appDelegate.storageMigrationNotice = persistenceController.migrationNotice
         dependencies.displayModeManager.configureNotchContent {
             MenuBarPopoverView().environment(\.dependencies, dependencies)
         } collapsedTrailing: {

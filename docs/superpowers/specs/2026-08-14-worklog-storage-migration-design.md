@@ -64,9 +64,10 @@ instalação.
 2. Procurar o arquivo legado no caminho fixo derivado da home do usuário e do
    bundle ID.
 3. Considerar o destino vazio quando ele tiver apenas a configuração padrão
-   criada por `SettingsRepository.current()`, sem projetos, sessões,
-   comentários, presets, faturas ou atalhos. Essa configuração inicial será
-   atualizada com os valores do legado, em vez de criar uma segunda linha.
+   criada por `SettingsRepository.current()` e atalhos padrão criados por
+   `ShortcutsService`, sem projetos, sessões, comentários, presets ou faturas.
+   Essas linhas iniciais serão atualizadas com os valores do legado, em vez de
+   criar duplicatas.
 4. Considerar o legado migrável quando houver qualquer dado de usuário.
 5. Se o destino estiver vazio e o legado for migrável, iniciar a migração.
 6. Se ambos tiverem dados, não fazer merge silencioso; manter o destino e
@@ -101,7 +102,10 @@ Faturas não dependem de projetos ou sessões porque seus itens são snapshots.
 
 ### Atomicidade e preservação
 
-- O legado será aberto sem escrita.
+- O arquivo legado original nunca será aberto para escrita. Para permitir que
+  o SwiftData faça qualquer atualização técnica necessária ao carregar um
+  schema antigo, o arquivo e seus `-wal`/`-shm` serão copiados para uma pasta
+  temporária; somente essa cópia poderá ser aberta com escrita.
 - Os objetos transferidos serão preparados em um único contexto de destino.
 - O contexto fará um único save transacional; em erro, fará rollback e não
   registrará a conclusão.

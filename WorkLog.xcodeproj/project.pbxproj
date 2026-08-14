@@ -19,6 +19,7 @@
 		FE01ABCD00000000000000F2 /* ReportsViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE01ABCD00000000000000F1 /* ReportsViewModelTests.swift */; };
 		FE01ABCD00000000000000F3 /* InvoiceRepositoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE01ABCD00000000000000F4 /* InvoiceRepositoryTests.swift */; };
 		FE01ABCD00000000000000F5 /* BillingViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE01ABCD00000000000000F6 /* BillingViewModelTests.swift */; };
+		FE0300000000000000000001 /* StorageMigrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE0300000000000000000002 /* StorageMigrationTests.swift */; };
 		FE0200000000000000000003 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = FE0200000000000000000002 /* Sparkle */; };
 /* End PBXBuildFile section */
 
@@ -54,6 +55,7 @@
 		FE01ABCD00000000000000F1 /* ReportsViewModelTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ReportsViewModelTests.swift; sourceTree = "<group>"; };
 		FE01ABCD00000000000000F4 /* InvoiceRepositoryTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = InvoiceRepositoryTests.swift; sourceTree = "<group>"; };
 		FE01ABCD00000000000000F6 /* BillingViewModelTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BillingViewModelTests.swift; sourceTree = "<group>"; };
+		FE0300000000000000000002 /* StorageMigrationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = StorageMigrationTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -128,6 +130,7 @@
 				FE01ABCD00000000000000F1 /* ReportsViewModelTests.swift */,
 				FE01ABCD00000000000000F4 /* InvoiceRepositoryTests.swift */,
 				FE01ABCD00000000000000F6 /* BillingViewModelTests.swift */,
+				FE0300000000000000000002 /* StorageMigrationTests.swift */,
 				7F84FBE2E23B029E05AD27A3 /* ProjectRepositoryTests.swift */,
 				96A14599AA7E5C2481CD72AD /* SessionRepositoryTests.swift */,
 				9A3684D2E814BE8A7CB60830 /* TestSupport.swift */,
@@ -307,6 +310,7 @@
 				3FC02749FC25EA0FA5C6655C /* TestSupport.swift in Sources */,
 				A2656A0725A4180213E50CD2 /* TimerServiceTests.swift in Sources */,
 				3FBF3B0A9C569FB286702BCB /* ValidationServiceTests.swift in Sources */,
+				FE0300000000000000000001 /* StorageMigrationTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
