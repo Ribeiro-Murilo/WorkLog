@@ -1,12 +1,14 @@
-## Correção dos cliques no notch
+## WorkLog 0.1.5
 
-- recupera automaticamente a `key window` quando o painel expandido perde o foco enquanto o cursor ainda está sobre o notch;
-- limita a recuperação de foco a uma vez a cada 250 ms, evitando disputa de foco e flicker durante animações, troca de Space ou wake/sleep;
-- mantém o estado visual expandido até o cursor sair da área do notch, sem deixar o painel aberto e sem receber eventos;
-- preserva o comportamento dos botões SwiftUI e não altera as regras do timer ou das sessões.
+- Ajusta a transferência de foco ao recolher o notch e recupera o foco no próprio clique, evitando a disputa periódica de foco com outras janelas.
+- Corrige a compilação no Xcode 27 usando identificadores UUID nos seletores de projetos e tipos salvos dos relatórios, preservando os filtros existentes.
+- Mantém as regras do cronômetro, das sessões e da persistência.
 
 ## Validação
 
-- build Release do aplicativo;
-- testes unitários do `WorkLogTests`;
-- pacote `.zip` assinado para distribuição via Sparkle.
+- 39 testes unitários passaram.
+- Archive Release gerado com versão 0.1.5 e build 7.
+- ZIP assinado para atualização via Sparkle.
+- O bloqueio intermitente completo do clique no notch ainda precisa ser confirmado em uso.
+
+Para atualizar, abra Configurações → Atualizações → Verificar atualizações… no WorkLog.
