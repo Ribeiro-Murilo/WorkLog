@@ -160,13 +160,17 @@ struct ReportsView: View {
 
             Divider().frame(height: 18)
 
-            Picker("Tipo salvo", selection: Binding<ReportPreset?>(
+            Picker("Tipo salvo", selection: Binding<UUID?>(
                 get: { nil },
-                set: { if let preset = $0 { viewModel.applyPreset(preset) } }
+                set: { selectedID in
+                    if let preset = viewModel.presets.first(where: { $0.id == selectedID }) {
+                        viewModel.applyPreset(preset)
+                    }
+                }
             )) {
-                Text("Selecionar…").tag(ReportPreset?.none)
+                Text("Selecionar…").tag(UUID?.none)
                 ForEach(viewModel.presets) { preset in
-                    Text(preset.name).tag(ReportPreset?.some(preset))
+                    Text(preset.name).tag(UUID?.some(preset.id))
                 }
             }
             .frame(maxWidth: 200)

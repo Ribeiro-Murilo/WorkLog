@@ -82,11 +82,17 @@
 
 ## Resultado da execução
 
-- Código implementado na branch atual, sem publicação.
-- Suíte integrada: 84 testes aprovados, nenhuma falha ou teste ignorado.
+- Código implementado na branch `main` e preparado para a release 0.1.6 (build 8).
+- Suíte integrada: 87 testes aprovados, nenhuma falha ou teste ignorado.
 - Builds Debug e Release concluídos com sucesso.
 - Testes reproduziram antes das correções os casos de ancestralidade pendente,
   projeto em conflito, emissor desatualizado e resolução de filho indisponível.
 - Prévia nativa das configurações inspecionada com estado vazio e conflito.
 - Ensaio real do transporte iCloud em dois Macs permanece pendente; os testes
   usam pastas temporárias e bancos locais separados.
+
+- Revisão da release corrigiu a recarga das preferências e dos atalhos após
+  restaurar backup, além da atualização do menu após alterações sincronizadas.
+- Pacote Release universal (Intel e Apple Silicon), com assinatura EdDSA
+  verificada contra a chave pública incorporada no app.
+- Proteções no `.gitignore` cobrem dados de sincronização, backups e bancos locais.
