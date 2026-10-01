@@ -72,10 +72,6 @@ final class NotchWindowController: NSObject, NSWindowDelegate {
     private var physicalNotchHeight: CGFloat = 0
     /// Poll de hover baseado na posição do mouse vs. zonas fixas (evita flicker).
     private var hoverPollTask: Task<Void, Never>?
-    /// O macOS pode retirar a key window de um painel não-ativante mesmo enquanto
-    /// o cursor continua sobre o notch expandido. Evita uma sequência de chamadas
-    /// de foco a cada ciclo do poll, que pode causar flicker.
-    private var lastKeyRecoveryAt = Date.distantPast
     private let logger = Logger(subsystem: "RibeiroWorkes.WorkLog", category: "NotchInteraction")
     private var lastDiagnosticState: String?
 
@@ -104,7 +100,9 @@ final class NotchWindowController: NSObject, NSWindowDelegate {
         super.init()
         panel.delegate = self
         panel.onMouseEvent = { [weak self] event, hitView in
-            self?.logMouseEvent(event, hitView: hitView)
+            guard let self else { return }
+            self.prepareForMouseEvent(event)
+            self.logMouseEvent(event, hitView: hitView)
         }
     }
 
@@ -130,7 +128,6 @@ final class NotchWindowController: NSObject, NSWindowDelegate {
     func dismiss() {
         hoverPollTask?.cancel()
         hoverPollTask = nil
-        lastKeyRecoveryAt = .distantPast
         logger.notice("dismiss expanded=\(self.isExpanded) key=\(self.panel.isKeyWindow)")
         panel.orderOut(nil)
     }
@@ -172,23 +169,24 @@ final class NotchWindowController: NSObject, NSWindowDelegate {
 
         if shouldExpand != isExpanded {
             setExpanded(shouldExpand)
-        } else if isExpanded && !panel.isKeyWindow {
-            recoverKeyWindowIfNeeded()
         }
     }
 
-    /// Recupera a key window somente enquanto o cursor permanece na área expandida.
-    /// O intervalo evita disputar foco com o AppKit durante trocas de Space, wake ou
-    /// uma animação de abertura.
-    private func recoverKeyWindowIfNeeded() {
-        guard panel.isVisible else { return }
+    /// Recupera o foco no próprio mouse-down, antes de o AppKit entregar o evento
+    /// ao controle. O hover sozinho não deve disputar foco com outras janelas.
+    private func prepareForMouseEvent(_ event: NSEvent) {
+        guard event.type == .leftMouseDown || event.type == .rightMouseDown,
+              isExpanded, panel.isVisible, !panel.isKeyWindow else { return }
 
-        let now = Date()
-        guard now.timeIntervalSince(lastKeyRecoveryAt) >= 0.25 else { return }
-        lastKeyRecoveryAt = now
+        // Uma associação key inconsistente faz makeKeyAndOrderFront virar um no-op.
+        // A ordenação libera a associação pelo ciclo de foco gerenciado pelo AppKit.
+        if NSApp.keyWindow === panel {
+            panel.orderOut(nil)
+            panel.orderFrontRegardless()
+        }
 
         logger.notice(
-            "recoverKeyWindow expanded=\(self.isExpanded) frame=\(NSStringFromRect(self.panel.frame), privacy: .public)"
+            "recoverKeyWindowOnMouseDown frame=\(NSStringFromRect(self.panel.frame), privacy: .public)"
         )
         panel.makeKeyAndOrderFront(nil)
     }
@@ -209,11 +207,13 @@ final class NotchWindowController: NSObject, NSWindowDelegate {
         // Torna o painel *key* ao expandir para que os controles SwiftUI recebam
         // cliques; ao colapsar, devolve o foco para não reter a *key window*.
         if expanded {
-            lastKeyRecoveryAt = Date()
             panel.makeKeyAndOrderFront(nil)
-        } else {
-            lastKeyRecoveryAt = .distantPast
-            panel.resignKey()
+        } else if panel.isKeyWindow || NSApp.keyWindow === panel {
+            // resignKey() é um callback do AppKit, não uma API de transferência de
+            // foco. Ordenar para fora libera tanto o estado local quanto a key
+            // window da aplicação; reapresentar não torna o painel key novamente.
+            panel.orderOut(nil)
+            panel.orderFrontRegardless()
         }
 
         refreshContent()
