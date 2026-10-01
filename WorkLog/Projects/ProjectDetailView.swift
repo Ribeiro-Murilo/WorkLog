@@ -31,6 +31,7 @@ struct ProjectDetailView: View {
             }
         }
         .navigationTitle(project.name)
+        .onChange(of: dependencies.folderSyncService.dataRevision) { viewModel?.reload() }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button {

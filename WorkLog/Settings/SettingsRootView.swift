@@ -23,13 +23,16 @@ struct SettingsRootView: View {
             backupTab
                 .tabItem { Label("Backup", systemImage: "externaldrive") }
 
+            FolderSyncSettingsView(service: dependencies.folderSyncService)
+                .tabItem { Label("Sincronização", systemImage: "arrow.triangle.2.circlepath") }
+
             updatesTab
                 .tabItem { Label("Atualizações", systemImage: "arrow.down.circle") }
 
             aboutTab
                 .tabItem { Label("Sobre", systemImage: "info.circle") }
         }
-        .frame(width: 480, height: 360)
+        .frame(width: 580, height: 360)
         .alert(
             "Erro",
             isPresented: Binding(get: { backupErrorMessage != nil }, set: { if !$0 { backupErrorMessage = nil } })
@@ -39,6 +42,9 @@ struct SettingsRootView: View {
             Text(backupErrorMessage ?? "")
         }
         .task { setupIfNeeded() }
+        .onChange(of: dependencies.folderSyncService.dataRevision) {
+            viewModel?.load()
+        }
     }
 
     @ViewBuilder
@@ -131,11 +137,11 @@ struct SettingsRootView: View {
                 Section {
                     TextField("Nome do emissor", text: Binding(
                         get: { viewModel.invoiceIssuerName },
-                        set: { viewModel.invoiceIssuerName = $0; viewModel.save() }
+                        set: { viewModel.invoiceIssuerName = $0; viewModel.saveIssuer() }
                     ))
                     TextEditor(text: Binding(
                         get: { viewModel.invoiceIssuerDetails },
-                        set: { viewModel.invoiceIssuerDetails = $0; viewModel.save() }
+                        set: { viewModel.invoiceIssuerDetails = $0; viewModel.saveIssuer() }
                     ))
                     .frame(height: 80)
                     .font(.callout)
@@ -231,6 +237,10 @@ struct SettingsRootView: View {
         guard runPanel(panel) == .OK, let url = panel.url else { return }
         do {
             try dependencies.backupService.importBackup(from: url)
+            setupIfNeeded()
+            viewModel?.reloadAfterBackupImport()
+            dependencies.displayModeManager.refresh()
+            backupErrorMessage = viewModel?.errorMessage
         } catch {
             backupErrorMessage = error.localizedDescription
         }

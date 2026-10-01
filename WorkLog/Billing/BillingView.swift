@@ -31,6 +31,11 @@ struct BillingView: View {
             Text(exportErrorMessage ?? "")
         }
         .task { setup() }
+        .onChange(of: dependencies.folderSyncService.dataRevision) {
+            viewModel?.loadClients()
+            viewModel?.loadInvoices()
+            viewModel?.generatePreview()
+        }
     }
 
     private func generatorSection(_ viewModel: BillingViewModel) -> some View {

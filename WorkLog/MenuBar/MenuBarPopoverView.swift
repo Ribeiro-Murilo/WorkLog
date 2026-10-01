@@ -23,6 +23,9 @@ struct MenuBarPopoverView: View {
         .padding(12)
         .frame(width: 320)
         .task { setupIfNeeded() }
+        .onChange(of: dependencies.folderSyncService.dataRevision) {
+            menuBarViewModel?.reload()
+        }
     }
 
     private var header: some View {

@@ -21,6 +21,11 @@
 		FE01ABCD00000000000000F5 /* BillingViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE01ABCD00000000000000F6 /* BillingViewModelTests.swift */; };
 		FE0300000000000000000001 /* StorageMigrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE0300000000000000000002 /* StorageMigrationTests.swift */; };
 		FE0200000000000000000003 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = FE0200000000000000000002 /* Sparkle */; };
+		FE0400000000000000000001 /* SyncJournalTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE0400000000000000000002 /* SyncJournalTests.swift */; };
+		FE0400000000000000000003 /* SyncRecordStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE0400000000000000000004 /* SyncRecordStoreTests.swift */; };
+		FE0400000000000000000005 /* BackupServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE0400000000000000000006 /* BackupServiceTests.swift */; };
+		FE0400000000000000000007 /* FolderSyncServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE0400000000000000000008 /* FolderSyncServiceTests.swift */; };
+		FE0400000000000000000009 /* SettingsSyncTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE040000000000000000000A /* SettingsSyncTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -56,6 +61,11 @@
 		FE01ABCD00000000000000F4 /* InvoiceRepositoryTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = InvoiceRepositoryTests.swift; sourceTree = "<group>"; };
 		FE01ABCD00000000000000F6 /* BillingViewModelTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BillingViewModelTests.swift; sourceTree = "<group>"; };
 		FE0300000000000000000002 /* StorageMigrationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = StorageMigrationTests.swift; sourceTree = "<group>"; };
+		FE0400000000000000000002 /* SyncJournalTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncJournalTests.swift; sourceTree = "<group>"; };
+		FE0400000000000000000004 /* SyncRecordStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncRecordStoreTests.swift; sourceTree = "<group>"; };
+		FE0400000000000000000006 /* BackupServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupServiceTests.swift; sourceTree = "<group>"; };
+		FE0400000000000000000008 /* FolderSyncServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderSyncServiceTests.swift; sourceTree = "<group>"; };
+		FE040000000000000000000A /* SettingsSyncTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsSyncTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -130,6 +140,11 @@
 				FE01ABCD00000000000000F1 /* ReportsViewModelTests.swift */,
 				FE01ABCD00000000000000F4 /* InvoiceRepositoryTests.swift */,
 				FE01ABCD00000000000000F6 /* BillingViewModelTests.swift */,
+				FE0400000000000000000002 /* SyncJournalTests.swift */,
+				FE0400000000000000000004 /* SyncRecordStoreTests.swift */,
+				FE0400000000000000000006 /* BackupServiceTests.swift */,
+				FE0400000000000000000008 /* FolderSyncServiceTests.swift */,
+				FE040000000000000000000A /* SettingsSyncTests.swift */,
 				FE0300000000000000000002 /* StorageMigrationTests.swift */,
 				7F84FBE2E23B029E05AD27A3 /* ProjectRepositoryTests.swift */,
 				96A14599AA7E5C2481CD72AD /* SessionRepositoryTests.swift */,
@@ -310,6 +325,11 @@
 				3FC02749FC25EA0FA5C6655C /* TestSupport.swift in Sources */,
 				A2656A0725A4180213E50CD2 /* TimerServiceTests.swift in Sources */,
 				3FBF3B0A9C569FB286702BCB /* ValidationServiceTests.swift in Sources */,
+				FE0400000000000000000001 /* SyncJournalTests.swift in Sources */,
+				FE0400000000000000000003 /* SyncRecordStoreTests.swift in Sources */,
+				FE0400000000000000000005 /* BackupServiceTests.swift in Sources */,
+				FE0400000000000000000007 /* FolderSyncServiceTests.swift in Sources */,
+				FE0400000000000000000009 /* SettingsSyncTests.swift in Sources */,
 				FE0300000000000000000001 /* StorageMigrationTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

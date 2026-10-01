@@ -14,7 +14,7 @@ final class PersistenceController {
 
     private init(inMemory: Bool = false) {
         let schema = Self.schema()
-        let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: inMemory)
+        let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: inMemory, cloudKitDatabase: .none)
 
         do {
             let container = try ModelContainer(for: schema, configurations: [configuration])
@@ -39,6 +39,7 @@ final class PersistenceController {
             ShortcutBinding.self,
             ReportPreset.self,
             Invoice.self,
+            FolderSyncMetadata.self,
         ])
     }
 

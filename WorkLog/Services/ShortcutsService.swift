@@ -5,6 +5,7 @@ protocol ShortcutsServiceProtocol: AnyObject {
     func registerDefaultsIfNeeded() throws
     func register(action: ShortcutAction, handler: @escaping () -> Void) throws
     func updateBinding(action: ShortcutAction, keyCombo: KeyCombo) throws
+    func refreshBindings() throws
     func unregisterAll()
 }
 
@@ -49,6 +50,16 @@ final class ShortcutsService: ShortcutsServiceProtocol {
     func updateBinding(action: ShortcutAction, keyCombo: KeyCombo) throws {
         _ = try repository.upsert(action: action, keyCombo: keyCombo, isEnabled: true)
         installHotKey(action: action, keyCombo: keyCombo)
+    }
+
+    @MainActor
+    func refreshBindings() throws {
+        let bindings = try repository.fetchAll()
+        // Keep the registered actions' handlers and the restored records unchanged.
+        unregisterAll()
+        for binding in bindings where binding.isEnabled && handlers[binding.action] != nil {
+            installHotKey(action: binding.action, keyCombo: binding.keyCombo)
+        }
     }
 
     func unregisterAll() {

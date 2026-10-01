@@ -31,6 +31,7 @@ struct DashboardHomeView: View {
             }
         }
         .navigationTitle("Resumo")
+        .onChange(of: dependencies.folderSyncService.dataRevision) { viewModel?.reload() }
         .task {
             if viewModel == nil {
                 viewModel = DashboardViewModel(

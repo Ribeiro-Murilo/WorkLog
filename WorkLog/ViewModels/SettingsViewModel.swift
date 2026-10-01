@@ -37,9 +37,12 @@ final class SettingsViewModel {
         load()
     }
 
-    func load() {
+    @discardableResult
+    func load() -> Bool {
         do {
             let settings = try settingsRepository.current()
+            let bindings = try shortcutBindingRepository.fetchAll()
+                .sorted { $0.action.displayName < $1.action.displayName }
             launchAtLogin = settings.launchAtLogin
             idleTimeoutMinutes = settings.idleTimeoutMinutes
             showSeconds = settings.showSeconds
@@ -49,10 +52,35 @@ final class SettingsViewModel {
             invoiceIssuerName = settings.invoiceIssuerName
             invoiceIssuerDetails = settings.invoiceIssuerDetails
             includeLogoInPDF = settings.includeLogoInPDF
-            shortcutBindings = try shortcutBindingRepository.fetchAll()
-                .sorted { $0.action.displayName < $1.action.displayName }
+            shortcutBindings = bindings
+            errorMessage = nil
+            return true
         } catch {
             errorMessage = error.localizedDescription
+            return false
+        }
+    }
+
+    func reloadAfterBackupImport() {
+        guard load() else {
+            errorMessage = "O backup foi importado, mas não foi possível recarregar suas preferências.\n\n\(errorMessage ?? "Erro desconhecido")"
+            return
+        }
+
+        idleDetectionService.updateIdleThreshold(minutes: idleTimeoutMinutes)
+        var failures: [String] = []
+        do {
+            try launchAtLoginService.setEnabled(launchAtLogin)
+        } catch {
+            failures.append("Inicialização no macOS: \(error.localizedDescription)")
+        }
+        do {
+            try shortcutsService.refreshBindings()
+        } catch {
+            failures.append("Atalhos: \(error.localizedDescription)")
+        }
+        if !failures.isEmpty {
+            errorMessage = "O backup foi importado, mas não foi possível aplicar todas as preferências.\n\n\(failures.joined(separator: "\n"))"
         }
     }
 
@@ -65,13 +93,22 @@ final class SettingsViewModel {
             settings.theme = theme
             settings.timeFormat = timeFormat
             settings.displayMode = displayMode
-            settings.invoiceIssuerName = invoiceIssuerName
-            settings.invoiceIssuerDetails = invoiceIssuerDetails
             settings.includeLogoInPDF = includeLogoInPDF
             try settingsRepository.save(settings)
 
             try launchAtLoginService.setEnabled(launchAtLogin)
             idleDetectionService.updateIdleThreshold(minutes: idleTimeoutMinutes)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func saveIssuer() {
+        do {
+            let settings = try settingsRepository.current()
+            settings.invoiceIssuerName = invoiceIssuerName
+            settings.invoiceIssuerDetails = invoiceIssuerDetails
+            try settingsRepository.save(settings)
         } catch {
             errorMessage = error.localizedDescription
         }

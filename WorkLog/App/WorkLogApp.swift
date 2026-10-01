@@ -25,6 +25,7 @@ struct WorkLogApp: App {
         }
         appDelegate.onDidFinishLaunching = { [dependencies] in
             dependencies.displayModeManager.refresh()
+            dependencies.folderSyncService.start()
         }
     }
 

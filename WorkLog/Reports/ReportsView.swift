@@ -43,6 +43,11 @@ struct ReportsView: View {
             Text("As colunas e o agrupamento atuais serão salvos com este nome.")
         }
         .task { setup() }
+        .onChange(of: dependencies.folderSyncService.dataRevision) {
+            allProjects = (try? dependencies.projectRepository.fetchAll(includeArchived: true)) ?? []
+            viewModel?.loadPresets()
+            viewModel?.generate()
+        }
     }
 
     private func filtersBar(_ viewModel: ReportsViewModel) -> some View {

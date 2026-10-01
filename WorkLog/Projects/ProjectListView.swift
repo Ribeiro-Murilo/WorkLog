@@ -43,6 +43,7 @@ struct ProjectListView: View {
                 }
         }
         .task { setupIfNeeded() }
+        .onChange(of: dependencies.folderSyncService.dataRevision) { viewModel?.reload() }
     }
 
     @ViewBuilder

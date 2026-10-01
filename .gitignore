@@ -7,3 +7,33 @@ desktop-electron/node_modules
 desktop-electron/dist
 desktop-electron/dist-electron
 desktop-electron/release
+
+# Local configuration and signing material
+.env
+.env.*
+!.env.example
+!.env.sample
+*.key
+*.pem
+*.p12
+*.pfx
+*.cer
+*.crt
+
+# Local databases and their journals
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
+*.store
+*.store-wal
+*.store-shm
+*.db
+*.db-wal
+*.db-shm
+
+# User backup exports and folder-sync data
+WorkLog-Backup*.json
+WorkLog Sync/

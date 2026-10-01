@@ -81,7 +81,7 @@ Regras de negócio centralizadas em `TimerService`:
 
 - **Sem dependências de terceiros para funcionalidades nativas:** atalhos globais usam a Carbon Event Manager API (`RegisterEventHotKey`) em vez de bibliotecas como KeyboardShortcuts, pois essas funcionalidades têm equivalente nativo direto. A única exceção consciente é o **Sparkle** (ver abaixo), adotado por não haver alternativa nativa da Apple para autoatualização fora da Mac App Store.
 - **Exportação Excel sem biblioteca externa:** gerada como SpreadsheetML 2003 XML (`.xml` com `progid="Excel.Sheet"`), formato nativamente aberto pelo Excel sem depender de bibliotecas de geração de `.xlsx`.
-- **Backup em JSON:** `BackupService` exporta/importa todo o dataset (projetos + sessões) em JSON simples, mantendo a persistência SwiftData como única fonte de verdade em tempo de execução.
+- **Backup em JSON:** `BackupService` exporta/importa projetos, sessões, comentários, faturas, presets, preferências e atalhos. Preserva os IDs, aceita backups antigos e importa tudo em uma transação, mantendo a persistência SwiftData como fonte de verdade em tempo de execução.
 - **`#Index` do SwiftData removido dos models:** a mesma toolchain apresentou uma falha (`Can't create an index element with composite property`) ao declarar índices sobre propriedades baseadas em enum. Os índices foram removidos; para o volume de dados de uso pessoal (milhares de projetos, centenas de milhares de sessões) o impacto é aceitável, mas é um ponto a revisitar em versões futuras do SDK.
 - **Atualização automática via Sparkle:** dependência SPM (`sparkle-project/Sparkle`) usada para o botão "Verificar atualizações…" em Configurações → Sobre. A checagem é sempre manual (`automaticallyChecksForUpdates = false`); não há verificação em segundo plano. As atualizações são publicadas via GitHub Releases e descritas em `appcast.xml` (servido via `raw.githubusercontent.com`), assinadas com uma chave EdDSA local (gerada com `scripts/sparkle-bin/generate_keys`, privada no Keychain). Ver `scripts/release.sh` / `make publish VERSION=x.y.z` para o fluxo de publicação.
 - **App Sandbox desativado (`ENABLE_APP_SANDBOX = NO`):** necessário porque um app sandboxed não pode se autossubstituir como o instalador padrão do Sparkle exige (isso demandaria os XPC services de instalação sandboxed do Sparkle). Como o app já não é distribuído pela Mac App Store, essa é a configuração padrão usada por apps atualizados via Sparkle.
@@ -96,6 +96,41 @@ Regras de negócio centralizadas em `TimerService`:
 1. Abra `WorkLog.xcodeproj` no Xcode.
 2. Selecione o scheme **WorkLog** e o destino **My Mac**.
 3. Rode com `Cmd+R`. O app aparecerá apenas na Menu Bar (sem ícone no Dock).
+
+## Sincronização entre Macs pelo iCloud Drive
+
+1. Ative o iCloud Drive nos Macs usando a mesma conta Apple.
+2. Em **Configurações → Sincronização**, escolha uma pasta no iCloud Drive.
+3. Abra o WorkLog no outro Mac e selecione a mesma pasta. O app cria o diretório
+   `WorkLog Sync` dentro dela para guardar o histórico de alterações.
+
+O acesso normal à pasta escolhida não exige Apple Developer Program pago,
+CloudKit ou servidor. O banco SwiftData continua local em cada Mac; não mova o
+banco SQLite para a pasta compartilhada. Os arquivos de sincronização usam o
+espaço disponível na sua conta iCloud e contêm os dados dos registros: escolha
+uma pasta cujo acesso corresponda à privacidade desejada.
+
+O WorkLog verifica a pasta automaticamente enquanto está aberto. **Verificar
+agora** faz uma verificação neste Mac; a última verificação local não confirma
+que outro Mac recebeu os arquivos. O transporte pelo iCloud pode demorar.
+Sem rede, espaço ou acesso à pasta, os dados locais são preservados e o app
+mostra o problema para uma nova tentativa. É possível continuar trabalhando
+offline e combinar as alterações quando a pasta estiver disponível novamente.
+
+Projetos, sessões pausadas/encerradas, comentários, faturas, presets de relatório
+e dados do emissor entram na sincronização. Sessões com cronômetro em execução
+permanecem locais até serem pausadas ou encerradas. Preferências de máquina e
+atalhos permanecem em cada Mac.
+
+Edições concorrentes aparecem como conflitos nessa aba. Você pode manter a
+versão deste Mac ou escolher uma versão preservada, identificada por data e
+Mac; exclusões são indicadas explicitamente. A data não determina sozinha qual
+versão deve prevalecer. Faturas com números repetidos mostram uma ação para
+atribuir um novo número a uma delas, preservando os demais dados.
+
+**Alterar pasta** inicia uma nova integração sem apagar os dados locais ou os
+arquivos anteriores. **Desativar sincronização** também preserva os dados e os
+arquivos. O histórico de operações fica retido; não há compactação automática.
 
 ## Como compilar (linha de comando)
 

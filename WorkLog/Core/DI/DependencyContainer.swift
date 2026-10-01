@@ -22,6 +22,7 @@ final class DependencyContainer {
     let backupService: BackupServiceProtocol
     let updateService: UpdateServiceProtocol
     let displayModeManager: DisplayModeManager
+    let folderSyncService: FolderSyncService
 
     init(modelContext: ModelContext) {
         self.modelContext = modelContext
@@ -56,7 +57,8 @@ final class DependencyContainer {
         self.exportService = ExportService()
         self.launchAtLoginService = LaunchAtLoginService()
         self.shortcutsService = ShortcutsService(repository: shortcutBindingRepository)
-        self.backupService = BackupService(projectRepository: projectRepository, sessionRepository: sessionRepository)
+        self.backupService = BackupService(modelContext: modelContext)
+        self.folderSyncService = FolderSyncService(recordStore: SwiftDataSyncRecordStore(modelContext: modelContext))
         self.updateService = UpdateService()
         self.displayModeManager = DisplayModeManager(
             settingsRepository: settingsRepository,

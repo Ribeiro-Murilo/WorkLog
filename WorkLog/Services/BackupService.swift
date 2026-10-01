@@ -1,59 +1,27 @@
 import Foundation
+import SwiftData
 
-private struct ProjectBackupDTO: Codable {
-    let id: UUID
-    let name: String
-    let client: String
-    let dailyRate: Decimal
-    let category: ProjectCategory
-    let tags: [String]
-    let descriptionText: String
-    let status: ProjectStatus
-    let isArchived: Bool
-    let isFavorite: Bool
-
-    init(from project: Project) {
-        id = project.id
-        name = project.name
-        client = project.client
-        dailyRate = project.dailyRate
-        category = project.category
-        tags = project.tags
-        descriptionText = project.descriptionText
-        status = project.status
-        isArchived = project.isArchived
-        isFavorite = project.isFavorite
-    }
+private struct WorkLogBackupArchive: Codable {
+    var formatVersion: Int = 2
+    var exportedAt: Date
+    var projects: [ProjectSyncPayload]
+    var sessions: [SessionSyncPayload]
+    var comments: [CommentSyncPayload]
+    var reportPresets: [ReportPresetSyncPayload]
+    var invoices: [InvoiceSyncPayload]
+    var settings: [AppSettingsSyncPayload]
+    var shortcuts: [ShortcutBindingSyncPayload]
 }
 
-private struct SessionBackupDTO: Codable {
-    let id: UUID
-    let projectId: UUID?
-    let date: Date
-    let startTime: Date
-    let endTime: Date?
-    let durationSeconds: TimeInterval
-    let note: String
-    let category: ProjectCategory
-    let status: SessionStatus
-
-    init(from session: Session) {
-        id = session.id
-        projectId = session.project?.id
-        date = session.date
-        startTime = session.startTime
-        endTime = session.endTime
-        durationSeconds = session.durationSeconds
-        note = session.note
-        category = session.category
-        status = session.status
+private enum BackupArchiveError: LocalizedError {
+    case unsupportedVersion
+    case invalidArchive
+    var errorDescription: String? {
+        switch self {
+        case .unsupportedVersion: return "Este backup foi criado por uma versão mais recente do WorkLog."
+        case .invalidArchive: return "O arquivo de backup contém registros inválidos ou repetidos."
+        }
     }
-}
-
-private struct BackupPayload: Codable {
-    let exportedAt: Date
-    let projects: [ProjectBackupDTO]
-    let sessions: [SessionBackupDTO]
 }
 
 @MainActor
@@ -64,66 +32,87 @@ protocol BackupServiceProtocol {
 
 @MainActor
 final class BackupService: BackupServiceProtocol {
-    private let projectRepository: ProjectRepositoryProtocol
-    private let sessionRepository: SessionRepositoryProtocol
+    private let modelContext: ModelContext
 
-    init(projectRepository: ProjectRepositoryProtocol, sessionRepository: SessionRepositoryProtocol) {
-        self.projectRepository = projectRepository
-        self.sessionRepository = sessionRepository
-    }
+    init(modelContext: ModelContext) { self.modelContext = modelContext }
 
     func exportBackup(to url: URL) throws {
-        let projects = try projectRepository.fetchAll(includeArchived: true)
-        let sessions = try sessionRepository.fetchAll(for: nil)
-
-        let payload = BackupPayload(
+        let archive = WorkLogBackupArchive(
             exportedAt: .now,
-            projects: projects.map(ProjectBackupDTO.init),
-            sessions: sessions.map(SessionBackupDTO.init)
+            projects: try modelContext.fetch(FetchDescriptor<Project>()).sorted { $0.id.uuidString < $1.id.uuidString }.map(ProjectSyncPayload.init),
+            sessions: try modelContext.fetch(FetchDescriptor<Session>()).sorted { $0.id.uuidString < $1.id.uuidString }.map(SessionSyncPayload.init),
+            comments: try modelContext.fetch(FetchDescriptor<Comment>()).sorted { $0.id.uuidString < $1.id.uuidString }.map(CommentSyncPayload.init),
+            reportPresets: try modelContext.fetch(FetchDescriptor<ReportPreset>()).sorted { $0.id.uuidString < $1.id.uuidString }.map(ReportPresetSyncPayload.init),
+            invoices: try modelContext.fetch(FetchDescriptor<Invoice>()).sorted { $0.id.uuidString < $1.id.uuidString }.map(InvoiceSyncPayload.init),
+            settings: try modelContext.fetch(FetchDescriptor<AppSettings>()).sorted { $0.id.uuidString < $1.id.uuidString }.map(AppSettingsSyncPayload.init),
+            shortcuts: try modelContext.fetch(FetchDescriptor<ShortcutBinding>()).sorted { $0.actionRawValue < $1.actionRawValue }.map(ShortcutBindingSyncPayload.init)
         )
-
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        let data = try encoder.encode(payload)
-        try data.write(to: url, options: .atomic)
+        try SyncPayloadCodec.encode(archive).write(to: url, options: .atomic)
     }
 
     func importBackup(from url: URL) throws {
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        let data = try Data(contentsOf: url)
-        let payload = try decoder.decode(BackupPayload.self, from: data)
+        // Fully decode and validate before touching the context.
+        let archive = try decodeArchive(Data(contentsOf: url))
+        let store = SwiftDataSyncRecordStore(modelContext: modelContext)
+        do {
+            var changes: [SyncRecordChange] = []
+            func append<T: Encodable>(_ entity: SyncEntity, _ records: [T], id: (T) -> UUID) throws {
+                let ids = records.map(id)
+                guard Set(ids).count == ids.count else { throw BackupArchiveError.invalidArchive }
+                for record in records { changes.append(SyncRecordChange(key: SyncRecordKey(entity: entity, id: id(record).uuidString), payload: try SyncPayloadCodec.encode(record))) }
+            }
+            try append(.project, archive.projects, id: { $0.id })
+            try append(.session, archive.sessions, id: { $0.id })
+            try append(.comment, archive.comments, id: { $0.id })
+            try append(.reportPreset, archive.reportPresets, id: { $0.id })
+            try append(.invoice, archive.invoices, id: { $0.id })
+            guard Set(archive.settings.map(\.id)).count == archive.settings.count,
+                  Set(archive.shortcuts.map(\.actionRawValue)).count == archive.shortcuts.count,
+                  archive.shortcuts.allSatisfy({ ShortcutAction(rawValue: $0.actionRawValue) != nil }) else {
+                throw BackupArchiveError.invalidArchive
+            }
+            let previousMaximum = try modelContext.fetch(FetchDescriptor<AppSettings>()).map(\.lastInvoiceNumber).max() ?? 0
+            try store.stage(changes, allowRunningSessions: true)
+            let existingSettings = try modelContext.fetch(FetchDescriptor<AppSettings>())
+            if !archive.settings.isEmpty {
+                let restoredIDs = Set(archive.settings.map(\.id))
+                for item in existingSettings where !restoredIDs.contains(item.id) { modelContext.delete(item) }
+            }
+            var settingsByID = Dictionary(uniqueKeysWithValues: existingSettings.filter { !$0.isDeleted }.map { ($0.id, $0) })
+            for payload in archive.settings {
+                let item = payload.materialize(existing: settingsByID[payload.id]); modelContext.insert(item); settingsByID[item.id] = item
+            }
+            var shortcutsByAction = Dictionary(uniqueKeysWithValues: try modelContext.fetch(FetchDescriptor<ShortcutBinding>()).map { ($0.actionRawValue, $0) })
+            for payload in archive.shortcuts {
+                let item = payload.materialize(existing: shortcutsByAction[payload.actionRawValue]); modelContext.insert(item); shortcutsByAction[item.actionRawValue] = item
+            }
+            try store.raiseInvoiceCounter(to: max(previousMaximum, archive.settings.map(\.lastInvoiceNumber).max() ?? 0))
+            try modelContext.save()
+        } catch { modelContext.rollback(); throw error }
+    }
 
-        var restoredProjectsById: [UUID: Project] = [:]
-        for dto in payload.projects {
-            let project = Project(
-                name: dto.name,
-                client: dto.client,
-                dailyRate: dto.dailyRate,
-                category: dto.category,
-                tags: dto.tags,
-                descriptionText: dto.descriptionText,
-                status: dto.status,
-                isArchived: dto.isArchived,
-                isFavorite: dto.isFavorite
-            )
-            try projectRepository.insert(project)
-            restoredProjectsById[dto.id] = project
+    private func decodeArchive(_ data: Data) throws -> WorkLogBackupArchive {
+        guard var object = try JSONSerialization.jsonObject(with: data) as? [String: Any] else { throw BackupArchiveError.invalidArchive }
+        if let version = object["formatVersion"] {
+            guard let number = version as? Int, number == 2 else { throw BackupArchiveError.unsupportedVersion }
+            return try SyncPayloadCodec.decode(WorkLogBackupArchive.self, from: data)
         }
-
-        for dto in payload.sessions {
-            let session = Session(
-                project: dto.projectId.flatMap { restoredProjectsById[$0] },
-                date: dto.date,
-                startTime: dto.startTime,
-                endTime: dto.endTime,
-                durationSeconds: dto.durationSeconds,
-                note: dto.note,
-                category: dto.category,
-                status: dto.status
-            )
-            try sessionRepository.insert(session)
+        // Original JSON backups used ISO8601 dates and omitted creation/update timestamps.
+        guard let exportedAt = object["exportedAt"] as? String,
+              var projects = object["projects"] as? [[String: Any]],
+              var sessions = object["sessions"] as? [[String: Any]] else { throw BackupArchiveError.invalidArchive }
+        for index in projects.indices {
+            projects[index]["createdAt"] = projects[index]["createdAt"] ?? exportedAt
+            projects[index]["updatedAt"] = projects[index]["updatedAt"] ?? exportedAt
         }
+        for index in sessions.indices {
+            sessions[index]["createdAt"] = sessions[index]["createdAt"] ?? exportedAt
+            sessions[index]["updatedAt"] = sessions[index]["updatedAt"] ?? exportedAt
+        }
+        object["formatVersion"] = 2
+        object["projects"] = projects; object["sessions"] = sessions
+        object["comments"] = []; object["reportPresets"] = []; object["invoices"] = []; object["settings"] = []; object["shortcuts"] = []
+        let decoder = JSONDecoder(); decoder.dateDecodingStrategy = .iso8601
+        return try decoder.decode(WorkLogBackupArchive.self, from: JSONSerialization.data(withJSONObject: object))
     }
 }
