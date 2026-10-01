@@ -10,6 +10,7 @@ struct NotchContentView<ExpandedContent: View, CollapsedTrailing: View>: View {
     /// da tela, então o conteúdo expandido recebe esse tanto de padding no topo para não
     /// ficar desenhado atrás da câmera (invisível) nem cortado pela borda da tela.
     let notchHeight: CGFloat
+    let onExpandedHeightChange: (CGFloat) -> Void
     @ViewBuilder var expandedContent: () -> ExpandedContent
     @ViewBuilder var collapsedTrailing: () -> CollapsedTrailing
 
@@ -17,12 +18,14 @@ struct NotchContentView<ExpandedContent: View, CollapsedTrailing: View>: View {
         isExpanded: Bool,
         notchWidth: CGFloat,
         notchHeight: CGFloat,
+        onExpandedHeightChange: @escaping (CGFloat) -> Void = { _ in },
         @ViewBuilder expandedContent: @escaping () -> ExpandedContent = { EmptyView() },
         @ViewBuilder collapsedTrailing: @escaping () -> CollapsedTrailing = { EmptyView() }
     ) {
         self.isExpanded = isExpanded
         self.notchWidth = notchWidth
         self.notchHeight = notchHeight
+        self.onExpandedHeightChange = onExpandedHeightChange
         self.expandedContent = expandedContent
         self.collapsedTrailing = collapsedTrailing
     }
@@ -40,7 +43,7 @@ struct NotchContentView<ExpandedContent: View, CollapsedTrailing: View>: View {
     }
 
     private var expandedBody: some View {
-        ZStack {
+        ZStack(alignment: .top) {
             // Base sólida escura garante que o painel SEMPRE tenha fundo,
             // mesmo quando o material translúcido não renderiza nada atrás
             // do notch (topo da tela, sem pixels reais por trás da janela).
@@ -57,7 +60,13 @@ struct NotchContentView<ExpandedContent: View, CollapsedTrailing: View>: View {
             )
 
             expandedContent()
+                .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, notchHeight)
+                .onGeometryChange(for: CGFloat.self) { geometry in
+                    geometry.size.height
+                } action: { height in
+                    onExpandedHeightChange(height)
+                }
         }
     }
 

@@ -32,9 +32,18 @@ final class DisplayModeManager {
         @ViewBuilder expanded: @escaping () -> some View,
         @ViewBuilder collapsedTrailing: @escaping () -> some View
     ) {
-        notchController.content = { isExpanded, notchWidth, notchHeight in
+        notchController.content = { [weak controller = notchController] isExpanded, notchWidth, notchHeight in
             AnyView(
-                NotchContentView(isExpanded: isExpanded, notchWidth: notchWidth, notchHeight: notchHeight) {
+                NotchContentView(
+                    isExpanded: isExpanded,
+                    notchWidth: notchWidth,
+                    notchHeight: notchHeight,
+                    onExpandedHeightChange: { [weak controller] height in
+                        Task { @MainActor in
+                            controller?.updateExpandedHeight(height)
+                        }
+                    }
+                ) {
                     expanded()
                 } collapsedTrailing: {
                     collapsedTrailing()

@@ -43,7 +43,7 @@ final class NotchWindowController: NSObject, NSWindowDelegate {
     private(set) var isExpanded = false
 
     /// Tamanho da área expandida, ancorada no topo-centro do notch.
-    var expandedSize = CGSize(width: 340, height: 420)
+    private(set) var expandedSize = CGSize(width: 340, height: 280)
 
     /// Largura extra desenhada à direita do notch quando colapsado (0 = só o recorte).
     /// Usada para acomodar o timer ao lado do notch. Ao mudar, reposiciona o painel
@@ -70,6 +70,8 @@ final class NotchWindowController: NSObject, NSWindowDelegate {
     /// Altura do recorte físico do notch (usada para não desenhar conteúdo importante
     /// atrás da câmera, já que o painel expandido é ancorado no topo físico da tela).
     private var physicalNotchHeight: CGFloat = 0
+    private var isTransitioningFrame = false
+    private var frameTransitionID = 0
     /// Poll de hover baseado na posição do mouse vs. zonas fixas (evita flicker).
     private var hoverPollTask: Task<Void, Never>?
     /// O macOS pode retirar a key window de um painel não-ativante mesmo enquanto
@@ -135,6 +137,22 @@ final class NotchWindowController: NSObject, NSWindowDelegate {
         panel.orderOut(nil)
     }
 
+    /// A altura vem do conteúdo intrínseco, incluindo a área segura da câmera.
+    /// Não recria a rootView: isso reiniciaria a medição e o estado dos controles.
+    func updateExpandedHeight(_ height: CGFloat) {
+        guard height.isFinite, height > 0 else { return }
+        let availableHeight = currentScreen.map { $0.frame.height } ?? ceil(height)
+        let measuredHeight = min(ceil(height), availableHeight)
+        guard abs(expandedSize.height - measuredHeight) >= 1 else { return }
+        expandedSize.height = measuredHeight
+
+        guard isExpanded, !isTransitioningFrame, let screen = currentScreen,
+              let frame = expandedFrame(on: screen) else { return }
+        panel.setFrame(frame, display: true)
+        hoverView.frame = NSRect(origin: .zero, size: frame.size)
+        layoutHostingView()
+    }
+
     private func startHoverPolling() {
         hoverPollTask?.cancel()
         hoverPollTask = Task { [weak self] in
@@ -197,6 +215,9 @@ final class NotchWindowController: NSObject, NSWindowDelegate {
         guard isExpanded != expanded, let screen = currentScreen else { return }
 
         isExpanded = expanded
+        frameTransitionID += 1
+        let transitionID = frameTransitionID
+        isTransitioningFrame = true
 
         let targetFrame = expanded
             ? (expandedFrame(on: screen) ?? panel.frame)
@@ -222,6 +243,20 @@ final class NotchWindowController: NSObject, NSWindowDelegate {
             context.duration = 0.28
             context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
             panel.animator().setFrame(targetFrame, display: true)
+        } completionHandler: { [weak self] in
+            Task { @MainActor [weak self] in
+                guard let self, self.frameTransitionID == transitionID else { return }
+                self.isTransitioningFrame = false
+                // A medição pode mudar enquanto o frame inicial está animando. Aplicar
+                // o resultado no fim impede o animator de restaurar a altura antiga.
+                guard let screen = self.currentScreen,
+                      let frame = self.isExpanded
+                        ? self.expandedFrame(on: screen)
+                        : self.collapsedFrame(on: screen) else { return }
+                self.panel.setFrame(frame, display: true)
+                self.hoverView.frame = NSRect(origin: .zero, size: frame.size)
+                self.layoutHostingView()
+            }
         }
     }
 

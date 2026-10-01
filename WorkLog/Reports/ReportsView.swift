@@ -70,10 +70,15 @@ struct ReportsView: View {
             }
 
             HStack {
-                Picker("Projeto", selection: Binding(get: { viewModel.projectFilter }, set: { viewModel.projectFilter = $0 })) {
-                    Text("Todos os projetos").tag(Project?.none)
+                Picker("Projeto", selection: Binding<UUID?>(
+                    get: { viewModel.projectFilter?.id },
+                    set: { selectedID in
+                        viewModel.projectFilter = allProjects.first { $0.id == selectedID }
+                    }
+                )) {
+                    Text("Todos os projetos").tag(UUID?.none)
                     ForEach(allProjects) { project in
-                        Text(project.name).tag(Project?.some(project))
+                        Text(project.name).tag(UUID?.some(project.id))
                     }
                 }
                 .frame(maxWidth: 200)
