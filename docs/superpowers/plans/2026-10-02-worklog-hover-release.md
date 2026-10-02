@@ -19,8 +19,8 @@ Autorização do usuário em 2026-10-02: entregar uma nova release da correção
 - [x] Reexecutar os 107 testes sem iniciar o aplicativo.
 - [x] Gerar archive Release universal e ZIP.
 - [x] Verificar versão, arquiteturas, assinatura, ZIP e feed.
-- [ ] Commitar, criar tag e publicar release com asset verificado.
-- [ ] Enviar `main` e confirmar feed público e release.
+- [x] Commitar, criar tag e publicar release com asset verificado.
+- Etapa final após este commit: enviar `main` e confirmar o feed público; guardar a conferência em `build/release-0.1.7/publication.json`.
 
 ## Evidência local
 
@@ -29,3 +29,10 @@ Autorização do usuário em 2026-10-02: entregar uma nova release da correção
 - ZIP: 8.059.148 bytes, SHA-256 `21bf71a04f6cb3281e5410d6a557ecf5a185a92b2355318e3cd4dc93bb802137`.
 - Assinatura ad-hoc íntegra; Ed25519 validada diretamente com a chave pública embarcada no app.
 - Relatório e archive preservados em `build/release-0.1.7`; nenhum aplicativo/test host iniciado.
+
+## Publicação
+
+- Tag `v0.1.7` aponta para `e4e75d4ca55ca79857de3d91e9cd8100833c6118`, com autoria exclusiva de Murilo Ribeiro.
+- Release pública: https://github.com/Ribeiro-Murilo/WorkLog/releases/tag/v0.1.7
+- Asset remoto: tamanho e digest SHA-256 iguais ao ZIP local; URL final acessível por HTTP.
+- Appcast enviado somente após a release pública disponibilizar o asset.
