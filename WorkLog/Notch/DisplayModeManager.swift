@@ -13,6 +13,8 @@ final class DisplayModeManager {
     private let settingsRepository: SettingsRepositoryProtocol
     private let timerService: TimerServiceProtocol
     private let notchController = NotchWindowController()
+    @ObservationIgnored private var lifecycleObserver: NotchLifecycleObserver?
+    @ObservationIgnored private var screenRecovery: NotchScreenRecovery?
 
     private(set) var isMenuBarVisible = true
 
@@ -25,6 +27,14 @@ final class DisplayModeManager {
             name: NSApplication.didChangeScreenParametersNotification,
             object: nil
         )
+        screenRecovery = NotchScreenRecovery(isScreenAvailable: {
+            NotchGeometry.primaryNotchScreen != nil
+        }) { [weak self] in
+            self?.refresh()
+        }
+        lifecycleObserver = NotchLifecycleObserver { [weak self] in
+            self?.refresh()
+        }
         observeTimerRunning()
     }
 
@@ -54,21 +64,24 @@ final class DisplayModeManager {
 
     func refresh() {
         let preferredMode = (try? settingsRepository.current().displayMode) ?? .menuBar
-        let effectiveMode: AppDisplayMode = (preferredMode == .notch && NotchGeometry.hasAnyNotch)
-            ? .notch
-            : .menuBar
+        let notchScreen = preferredMode == .notch ? NotchGeometry.primaryNotchScreen : nil
+        let effectiveMode: AppDisplayMode = notchScreen != nil ? .notch : .menuBar
 
         switch effectiveMode {
         case .menuBar:
             isMenuBarVisible = true
             notchController.dismiss()
+            if preferredMode == .notch {
+                screenRecovery?.start()
+            } else {
+                screenRecovery?.stop()
+            }
         case .notch:
+            screenRecovery?.stop()
             isMenuBarVisible = false
-            if let screen = NotchGeometry.primaryNotchScreen {
+            if let screen = notchScreen {
                 updateTimerBadgeWidth()
                 notchController.present(on: screen)
-            } else {
-                isMenuBarVisible = true
             }
         }
     }

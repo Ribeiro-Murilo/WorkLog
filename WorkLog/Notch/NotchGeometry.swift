@@ -1,6 +1,10 @@
 import AppKit
 
 enum NotchGeometry {
+    static func displayID(of screen: NSScreen) -> UInt32? {
+        (screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value
+    }
+
     static func hasNotch(on screen: NSScreen) -> Bool {
         screen.safeAreaInsets.top > 0
     }

@@ -64,18 +64,31 @@ final class NotchWindowController: NSObject, NSWindowDelegate {
     private let panel: NSPanel
     private let hoverView: NotchHoverView
     private var hostingView: NSHostingView<AnyView>?
-    private weak var currentScreen: NSScreen?
+    /// NSScreen pode ser substituída pelo AppKit. Retemos apenas a identidade do
+    /// monitor e buscamos sua instância atual a cada avaliação, inclusive no wake.
+    private let screenResolver = NotchScreenResolver<NSScreen>(
+        screens: { NSScreen.screens },
+        identifier: { NotchGeometry.displayID(of: $0) },
+        hasNotch: { NotchGeometry.hasNotch(on: $0) }
+    )
+    private var isPresented = false
+    private var presentedDisplayID: UInt32?
+    private var presentedNotchFrame: NSRect?
+    private var presentedScreenFrame: NSRect?
+    private var currentScreen: NSScreen? {
+        isPresented ? screenResolver.resolve() : nil
+    }
     /// Largura do recorte físico do notch da tela atual (independente da extensão).
     private var physicalNotchWidth: CGFloat = 0
     /// Altura do recorte físico do notch (usada para não desenhar conteúdo importante
     /// atrás da câmera, já que o painel expandido é ancorado no topo físico da tela).
     private var physicalNotchHeight: CGFloat = 0
-    private var isTransitioningFrame = false
-    private var frameTransitionID = 0
+    private var frameTransition = NotchFrameTransition()
     /// Poll de hover baseado na posição do mouse vs. zonas fixas (evita flicker).
     private var hoverPollTask: Task<Void, Never>?
     private let logger = Logger(subsystem: "RibeiroWorkes.WorkLog", category: "NotchInteraction")
     private var lastDiagnosticState: String?
+    private var lastHoverUnavailableReason: String?
 
     override init() {
         let panel = NotchPanel(
@@ -111,19 +124,14 @@ final class NotchWindowController: NSObject, NSWindowDelegate {
     func present(on screen: NSScreen) {
         guard let notchFrame = NotchGeometry.notchFrame(on: screen) else { return }
 
-        currentScreen = screen
-        physicalNotchWidth = notchFrame.width
-        physicalNotchHeight = notchFrame.height
-        isExpanded = false
-
-        let frame = collapsedFrame(on: screen) ?? notchFrame
-        panel.setFrame(frame, display: false)
-        hoverView.frame = NSRect(origin: .zero, size: frame.size)
-        layoutHostingView()
-        refreshContent()
+        screenResolver.select(screen)
+        if !isPresented { isExpanded = false }
+        isPresented = true
+        reconcileScreenGeometry(on: screen, notchFrame: notchFrame)
+        logHoverRecoveryIfNeeded()
 
         panel.orderFrontRegardless()
-        logger.notice("present screen=\(screen.localizedName, privacy: .public) frame=\(NSStringFromRect(frame), privacy: .public)")
+        logger.notice("present screen=\(screen.localizedName, privacy: .public) frame=\(NSStringFromRect(self.panel.frame), privacy: .public) expanded=\(self.isExpanded)")
         startHoverPolling()
     }
 
@@ -131,6 +139,13 @@ final class NotchWindowController: NSObject, NSWindowDelegate {
         hoverPollTask?.cancel()
         hoverPollTask = nil
         logger.notice("dismiss expanded=\(self.isExpanded) key=\(self.panel.isKeyWindow)")
+        isPresented = false
+        frameTransition.invalidate()
+        screenResolver.reset()
+        presentedDisplayID = nil
+        presentedNotchFrame = nil
+        presentedScreenFrame = nil
+        lastHoverUnavailableReason = nil
         panel.orderOut(nil)
     }
 
@@ -143,7 +158,7 @@ final class NotchWindowController: NSObject, NSWindowDelegate {
         guard abs(expandedSize.height - measuredHeight) >= 1 else { return }
         expandedSize.height = measuredHeight
 
-        guard isExpanded, !isTransitioningFrame, let screen = currentScreen,
+        guard isExpanded, !frameTransition.isAnimating, let screen = currentScreen,
               let frame = expandedFrame(on: screen) else { return }
         panel.setFrame(frame, display: true)
         hoverView.frame = NSRect(origin: .zero, size: frame.size)
@@ -165,9 +180,23 @@ final class NotchWindowController: NSObject, NSWindowDelegate {
     /// zona expandida OU na colapsada) mantém o badge do timer sempre dentro da área
     /// ativa, eliminando o loop de abre/fecha.
     private func evaluateHover() {
-        guard let screen = currentScreen,
-              let collapsed = collapsedFrame(on: screen),
-              let expanded = expandedFrame(on: screen) else { return }
+        guard isPresented else { return }
+        guard let screen = currentScreen else {
+            logHoverUnavailable(reason: "noCurrentNotchScreen")
+            return
+        }
+        guard let notchFrame = NotchGeometry.notchFrame(on: screen) else {
+            logHoverUnavailable(reason: "invalidNotchGeometry")
+            return
+        }
+
+        reconcileScreenGeometry(on: screen, notchFrame: notchFrame)
+        guard let collapsed = collapsedFrame(on: screen),
+              let expanded = expandedFrame(on: screen) else {
+            logHoverUnavailable(reason: "invalidNotchGeometry")
+            return
+        }
+        logHoverRecoveryIfNeeded()
 
         let mouse = NSEvent.mouseLocation
         let shouldExpand: Bool
@@ -188,6 +217,43 @@ final class NotchWindowController: NSObject, NSWindowDelegate {
         if shouldExpand != isExpanded {
             setExpanded(shouldExpand)
         }
+    }
+
+    /// Reconcilia somente quando a identidade/geometria muda. Reapresentações de
+    /// wake não recolhem o painel nem interrompem uma animação na mesma tela.
+    private func reconcileScreenGeometry(on screen: NSScreen, notchFrame: NSRect) {
+        let displayID = NotchGeometry.displayID(of: screen)
+        guard presentedDisplayID != displayID || presentedNotchFrame != notchFrame
+                || presentedScreenFrame != screen.frame else { return }
+
+        frameTransition.invalidate()
+        presentedDisplayID = displayID
+        presentedNotchFrame = notchFrame
+        presentedScreenFrame = screen.frame
+        physicalNotchWidth = notchFrame.width
+        physicalNotchHeight = notchFrame.height
+        expandedSize.height = min(expandedSize.height, screen.frame.height)
+
+        let frame = isExpanded
+            ? (expandedFrame(on: screen) ?? notchFrame)
+            : (collapsedFrame(on: screen) ?? notchFrame)
+        panel.setFrame(frame, display: true)
+        hoverView.frame = NSRect(origin: .zero, size: frame.size)
+        layoutHostingView()
+        refreshContent()
+        logger.notice("reconcileScreen screen=\(screen.localizedName, privacy: .public) frame=\(NSStringFromRect(frame), privacy: .public) expanded=\(self.isExpanded)")
+    }
+
+    private func logHoverUnavailable(reason: String) {
+        guard lastHoverUnavailableReason != reason else { return }
+        lastHoverUnavailableReason = reason
+        logger.warning("hoverUnavailable reason=\(reason, privacy: .public) visible=\(self.panel.isVisible) expanded=\(self.isExpanded)")
+    }
+
+    private func logHoverRecoveryIfNeeded() {
+        guard let reason = lastHoverUnavailableReason else { return }
+        lastHoverUnavailableReason = nil
+        logger.notice("hoverRecovered previousReason=\(reason, privacy: .public)")
     }
 
     /// Recupera o foco no próprio mouse-down, antes de o AppKit entregar o evento
@@ -213,9 +279,6 @@ final class NotchWindowController: NSObject, NSWindowDelegate {
         guard isExpanded != expanded, let screen = currentScreen else { return }
 
         isExpanded = expanded
-        frameTransitionID += 1
-        let transitionID = frameTransitionID
-        isTransitioningFrame = true
 
         let targetFrame = expanded
             ? (expandedFrame(on: screen) ?? panel.frame)
@@ -239,14 +302,21 @@ final class NotchWindowController: NSObject, NSWindowDelegate {
 
         refreshContent()
 
+        animateFrame(to: targetFrame, duration: 0.28)
+    }
+
+    /// Todas as animações, inclusive a largura do badge, concluem usando a tela e
+    /// o estado atuais. Um callback antigo não interrompe uma animação mais nova.
+    private func animateFrame(to targetFrame: NSRect, duration: TimeInterval) {
+        let transitionID = frameTransition.begin()
         NSAnimationContext.runAnimationGroup { context in
-            context.duration = 0.28
+            context.duration = duration
             context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
             panel.animator().setFrame(targetFrame, display: true)
         } completionHandler: { [weak self] in
             Task { @MainActor [weak self] in
-                guard let self, self.frameTransitionID == transitionID else { return }
-                self.isTransitioningFrame = false
+                guard let self, self.isPresented,
+                      self.frameTransition.finish(transitionID) else { return }
                 // A medição pode mudar enquanto o frame inicial está animando. Aplicar
                 // o resultado no fim impede o animator de restaurar a altura antiga.
                 guard let screen = self.currentScreen,
@@ -292,12 +362,9 @@ final class NotchWindowController: NSObject, NSWindowDelegate {
         refreshContent()
 
         if animated {
-            NSAnimationContext.runAnimationGroup { context in
-                context.duration = 0.2
-                context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-                panel.animator().setFrame(frame, display: true)
-            }
+            animateFrame(to: frame, duration: 0.2)
         } else {
+            frameTransition.invalidate()
             panel.setFrame(frame, display: true)
             hoverView.frame = NSRect(origin: .zero, size: frame.size)
             layoutHostingView()

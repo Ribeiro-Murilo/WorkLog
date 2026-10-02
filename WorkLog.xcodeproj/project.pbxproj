@@ -26,6 +26,10 @@
 		FE0400000000000000000005 /* BackupServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE0400000000000000000006 /* BackupServiceTests.swift */; };
 		FE0400000000000000000007 /* FolderSyncServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE0400000000000000000008 /* FolderSyncServiceTests.swift */; };
 		FE0400000000000000000009 /* SettingsSyncTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE040000000000000000000A /* SettingsSyncTests.swift */; };
+		FE0500000000000000000001 /* NotchScreenResolverTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE0500000000000000000002 /* NotchScreenResolverTests.swift */; };
+		FE0500000000000000000003 /* NotchLifecycleObserverTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE0500000000000000000004 /* NotchLifecycleObserverTests.swift */; };
+		FE0500000000000000000005 /* NotchFrameTransitionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE0500000000000000000006 /* NotchFrameTransitionTests.swift */; };
+		FE0500000000000000000007 /* NotchScreenRecoveryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE0500000000000000000008 /* NotchScreenRecoveryTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -66,6 +70,10 @@
 		FE0400000000000000000006 /* BackupServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupServiceTests.swift; sourceTree = "<group>"; };
 		FE0400000000000000000008 /* FolderSyncServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderSyncServiceTests.swift; sourceTree = "<group>"; };
 		FE040000000000000000000A /* SettingsSyncTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsSyncTests.swift; sourceTree = "<group>"; };
+		FE0500000000000000000002 /* NotchScreenResolverTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotchScreenResolverTests.swift; sourceTree = "<group>"; };
+		FE0500000000000000000004 /* NotchLifecycleObserverTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotchLifecycleObserverTests.swift; sourceTree = "<group>"; };
+		FE0500000000000000000006 /* NotchFrameTransitionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotchFrameTransitionTests.swift; sourceTree = "<group>"; };
+		FE0500000000000000000008 /* NotchScreenRecoveryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotchScreenRecoveryTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -145,6 +153,10 @@
 				FE0400000000000000000006 /* BackupServiceTests.swift */,
 				FE0400000000000000000008 /* FolderSyncServiceTests.swift */,
 				FE040000000000000000000A /* SettingsSyncTests.swift */,
+				FE0500000000000000000002 /* NotchScreenResolverTests.swift */,
+				FE0500000000000000000004 /* NotchLifecycleObserverTests.swift */,
+				FE0500000000000000000006 /* NotchFrameTransitionTests.swift */,
+				FE0500000000000000000008 /* NotchScreenRecoveryTests.swift */,
 				FE0300000000000000000002 /* StorageMigrationTests.swift */,
 				7F84FBE2E23B029E05AD27A3 /* ProjectRepositoryTests.swift */,
 				96A14599AA7E5C2481CD72AD /* SessionRepositoryTests.swift */,
@@ -330,6 +342,10 @@
 				FE0400000000000000000005 /* BackupServiceTests.swift in Sources */,
 				FE0400000000000000000007 /* FolderSyncServiceTests.swift in Sources */,
 				FE0400000000000000000009 /* SettingsSyncTests.swift in Sources */,
+				FE0500000000000000000001 /* NotchScreenResolverTests.swift in Sources */,
+				FE0500000000000000000003 /* NotchLifecycleObserverTests.swift in Sources */,
+				FE0500000000000000000005 /* NotchFrameTransitionTests.swift in Sources */,
+				FE0500000000000000000007 /* NotchScreenRecoveryTests.swift in Sources */,
 				FE0300000000000000000001 /* StorageMigrationTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -356,11 +372,11 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 8;
+				CURRENT_PROJECT_VERSION = 9;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 26.5;
-				MARKETING_VERSION = 0.1.6;
+				MARKETING_VERSION = 0.1.7;
 				PRODUCT_BUNDLE_IDENTIFIER = RibeiroWorkes.WorkLogUITests;
 				PRODUCT_MODULE_NAME = WorkLogUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -376,11 +392,11 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 8;
+				CURRENT_PROJECT_VERSION = 9;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 26.5;
-				MARKETING_VERSION = 0.1.6;
+				MARKETING_VERSION = 0.1.7;
 				PRODUCT_BUNDLE_IDENTIFIER = RibeiroWorkes.WorkLogTests;
 				PRODUCT_MODULE_NAME = WorkLogTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -516,7 +532,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 8;
+				CURRENT_PROJECT_VERSION = 9;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readwrite;
@@ -527,7 +543,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.1.6;
+				MARKETING_VERSION = 0.1.7;
 				PRODUCT_BUNDLE_IDENTIFIER = RibeiroWorkes.WorkLog;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -547,7 +563,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 8;
+				CURRENT_PROJECT_VERSION = 9;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readwrite;
@@ -558,7 +574,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.1.6;
+				MARKETING_VERSION = 0.1.7;
 				PRODUCT_BUNDLE_IDENTIFIER = RibeiroWorkes.WorkLog;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -576,11 +592,11 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 8;
+				CURRENT_PROJECT_VERSION = 9;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 26.5;
-				MARKETING_VERSION = 0.1.6;
+				MARKETING_VERSION = 0.1.7;
 				PRODUCT_BUNDLE_IDENTIFIER = RibeiroWorkes.WorkLogTests;
 				PRODUCT_MODULE_NAME = WorkLogTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -595,11 +611,11 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 8;
+				CURRENT_PROJECT_VERSION = 9;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 26.5;
-				MARKETING_VERSION = 0.1.6;
+				MARKETING_VERSION = 0.1.7;
 				PRODUCT_BUNDLE_IDENTIFIER = RibeiroWorkes.WorkLogUITests;
 				PRODUCT_MODULE_NAME = WorkLogUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
