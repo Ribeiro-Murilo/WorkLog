@@ -30,6 +30,10 @@
 		FE0500000000000000000003 /* NotchLifecycleObserverTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE0500000000000000000004 /* NotchLifecycleObserverTests.swift */; };
 		FE0500000000000000000005 /* NotchFrameTransitionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE0500000000000000000006 /* NotchFrameTransitionTests.swift */; };
 		FE0500000000000000000007 /* NotchScreenRecoveryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE0500000000000000000008 /* NotchScreenRecoveryTests.swift */; };
+		FE0600000000000000000002 /* NotchShapeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE0600000000000000000001 /* NotchShapeTests.swift */; };
+		FE0600000000000000000004 /* NotchHoverPolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE0600000000000000000003 /* NotchHoverPolicyTests.swift */; };
+		FE0600000000000000000006 /* NotchPanelViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE0600000000000000000005 /* NotchPanelViewModelTests.swift */; };
+		FE0600000000000000000008 /* NotchPanelRenderingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE0600000000000000000007 /* NotchPanelRenderingTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -74,6 +78,10 @@
 		FE0500000000000000000004 /* NotchLifecycleObserverTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotchLifecycleObserverTests.swift; sourceTree = "<group>"; };
 		FE0500000000000000000006 /* NotchFrameTransitionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotchFrameTransitionTests.swift; sourceTree = "<group>"; };
 		FE0500000000000000000008 /* NotchScreenRecoveryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotchScreenRecoveryTests.swift; sourceTree = "<group>"; };
+		FE0600000000000000000001 /* NotchShapeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotchShapeTests.swift; sourceTree = "<group>"; };
+		FE0600000000000000000003 /* NotchHoverPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotchHoverPolicyTests.swift; sourceTree = "<group>"; };
+		FE0600000000000000000005 /* NotchPanelViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotchPanelViewModelTests.swift; sourceTree = "<group>"; };
+		FE0600000000000000000007 /* NotchPanelRenderingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotchPanelRenderingTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -156,6 +164,10 @@
 				FE0500000000000000000002 /* NotchScreenResolverTests.swift */,
 				FE0500000000000000000004 /* NotchLifecycleObserverTests.swift */,
 				FE0500000000000000000006 /* NotchFrameTransitionTests.swift */,
+				FE0600000000000000000007 /* NotchPanelRenderingTests.swift */,
+				FE0600000000000000000005 /* NotchPanelViewModelTests.swift */,
+				FE0600000000000000000003 /* NotchHoverPolicyTests.swift */,
+				FE0600000000000000000001 /* NotchShapeTests.swift */,
 				FE0500000000000000000008 /* NotchScreenRecoveryTests.swift */,
 				FE0300000000000000000002 /* StorageMigrationTests.swift */,
 				7F84FBE2E23B029E05AD27A3 /* ProjectRepositoryTests.swift */,
@@ -345,6 +357,10 @@
 				FE0500000000000000000001 /* NotchScreenResolverTests.swift in Sources */,
 				FE0500000000000000000003 /* NotchLifecycleObserverTests.swift in Sources */,
 				FE0500000000000000000005 /* NotchFrameTransitionTests.swift in Sources */,
+				FE0600000000000000000008 /* NotchPanelRenderingTests.swift in Sources */,
+				FE0600000000000000000006 /* NotchPanelViewModelTests.swift in Sources */,
+				FE0600000000000000000004 /* NotchHoverPolicyTests.swift in Sources */,
+				FE0600000000000000000002 /* NotchShapeTests.swift in Sources */,
 				FE0500000000000000000007 /* NotchScreenRecoveryTests.swift in Sources */,
 				FE0300000000000000000001 /* StorageMigrationTests.swift in Sources */,
 			);

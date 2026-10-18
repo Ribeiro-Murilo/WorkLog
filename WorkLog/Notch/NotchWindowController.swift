@@ -41,9 +41,10 @@ private final class NotchPanel: NSPanel {
 @MainActor
 final class NotchWindowController: NSObject, NSWindowDelegate {
     private(set) var isExpanded = false
+    var isPinned = false
 
     /// Tamanho da área expandida, ancorada no topo-centro do notch.
-    private(set) var expandedSize = CGSize(width: 340, height: 280)
+    private(set) var expandedSize = CGSize(width: NotchPanelMetrics.expandedWidth, height: 280)
 
     /// Largura extra desenhada à direita do notch quando colapsado (0 = só o recorte).
     /// Usada para acomodar o timer ao lado do notch. Ao mudar, reposiciona o painel
@@ -202,12 +203,12 @@ final class NotchWindowController: NSObject, NSWindowDelegate {
         logHoverRecoveryIfNeeded()
 
         let mouse = NSEvent.mouseLocation
-        let shouldExpand: Bool
-        if isExpanded {
-            shouldExpand = expanded.contains(mouse) || collapsed.contains(mouse)
-        } else {
-            shouldExpand = collapsed.contains(mouse)
-        }
+        // A busca retém a janela enquanto recebe texto, sem capturar foco no hover.
+        let isEditing = panel.isKeyWindow && panel.firstResponder is NSTextView
+        let shouldExpand = NotchHoverPolicy.shouldExpand(
+            isExpanded: isExpanded, isPinned: isPinned, isEditing: isEditing,
+            containsExpanded: expanded.contains(mouse), containsCollapsed: collapsed.contains(mouse)
+        )
 
         logDiagnosticState(
             mouse: mouse,

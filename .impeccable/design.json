@@ -1,0 +1,282 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-18T01:39:00.614316+00:00",
+  "title": "Design System: WorkLog Notch",
+  "extensions": {
+    "colorMeta": {
+      "panel-black": {
+        "role": "neutral",
+        "displayName": "Panel Black",
+        "tonalRamp": [
+          "oklch(15% 0.00000 0.00)",
+          "oklch(26% 0.00000 0.00)",
+          "oklch(38% 0.00000 0.00)",
+          "oklch(49% 0.00000 0.00)",
+          "oklch(61% 0.00000 0.00)",
+          "oklch(72% 0.00000 0.00)",
+          "oklch(84% 0.00000 0.00)",
+          "oklch(95% 0.00000 0.00)"
+        ],
+        "purpose": "Synthetic OKLCH preview ramp only; not shipped application tokens."
+      },
+      "primary-white": {
+        "role": "primary",
+        "displayName": "Primary White",
+        "tonalRamp": [
+          "oklch(15% 0.00000 89.88)",
+          "oklch(26% 0.00000 89.88)",
+          "oklch(38% 0.00000 89.88)",
+          "oklch(49% 0.00000 89.88)",
+          "oklch(61% 0.00000 89.88)",
+          "oklch(72% 0.00000 89.88)",
+          "oklch(84% 0.00000 89.88)",
+          "oklch(95% 0.00000 89.88)"
+        ],
+        "purpose": "Synthetic OKLCH preview ramp only; not shipped application tokens."
+      },
+      "secondary-gray": {
+        "role": "neutral",
+        "displayName": "Secondary Gray",
+        "tonalRamp": [
+          "oklch(15% 0.01029 273.31)",
+          "oklch(26% 0.01029 273.31)",
+          "oklch(38% 0.01029 273.31)",
+          "oklch(49% 0.01029 273.31)",
+          "oklch(61% 0.01029 273.31)",
+          "oklch(72% 0.01029 273.31)",
+          "oklch(84% 0.01029 273.31)",
+          "oklch(95% 0.01029 273.31)"
+        ],
+        "purpose": "Synthetic OKLCH preview ramp only; not shipped application tokens."
+      },
+      "control-fill": {
+        "role": "neutral",
+        "displayName": "Control Fill",
+        "tonalRamp": [
+          "oklch(15% 0.00000 89.88)",
+          "oklch(26% 0.00000 89.88)",
+          "oklch(38% 0.00000 89.88)",
+          "oklch(49% 0.00000 89.88)",
+          "oklch(61% 0.00000 89.88)",
+          "oklch(72% 0.00000 89.88)",
+          "oklch(84% 0.00000 89.88)",
+          "oklch(95% 0.00000 89.88)"
+        ],
+        "purpose": "Synthetic OKLCH preview ramp only; not shipped application tokens."
+      },
+      "divider": {
+        "role": "neutral",
+        "displayName": "Divider",
+        "tonalRamp": [
+          "oklch(15% 0.00000 89.88)",
+          "oklch(26% 0.00000 89.88)",
+          "oklch(38% 0.00000 89.88)",
+          "oklch(49% 0.00000 89.88)",
+          "oklch(61% 0.00000 89.88)",
+          "oklch(72% 0.00000 89.88)",
+          "oklch(84% 0.00000 89.88)",
+          "oklch(95% 0.00000 89.88)"
+        ],
+        "purpose": "Synthetic OKLCH preview ramp only; not shipped application tokens."
+      },
+      "prominent-fill": {
+        "role": "neutral",
+        "displayName": "Prominent Fill",
+        "tonalRamp": [
+          "oklch(15% 0.00000 89.88)",
+          "oklch(26% 0.00000 89.88)",
+          "oklch(38% 0.00000 89.88)",
+          "oklch(49% 0.00000 89.88)",
+          "oklch(61% 0.00000 89.88)",
+          "oklch(72% 0.00000 89.88)",
+          "oklch(84% 0.00000 89.88)",
+          "oklch(95% 0.00000 89.88)"
+        ],
+        "purpose": "Synthetic OKLCH preview ramp only; not shipped application tokens."
+      },
+      "project-teal": {
+        "role": "secondary",
+        "displayName": "Project Teal",
+        "tonalRamp": [
+          "oklch(15% 0.11939 196.71)",
+          "oklch(26% 0.11939 196.71)",
+          "oklch(38% 0.11939 196.71)",
+          "oklch(49% 0.11939 196.71)",
+          "oklch(61% 0.11939 196.71)",
+          "oklch(72% 0.11939 196.71)",
+          "oklch(84% 0.11939 196.71)",
+          "oklch(95% 0.11939 196.71)"
+        ],
+        "purpose": "Synthetic OKLCH preview ramp only; not shipped application tokens."
+      },
+      "project-periwinkle": {
+        "role": "secondary",
+        "displayName": "Project Periwinkle",
+        "tonalRamp": [
+          "oklch(15% 0.17556 276.02)",
+          "oklch(26% 0.17556 276.02)",
+          "oklch(38% 0.17556 276.02)",
+          "oklch(49% 0.17556 276.02)",
+          "oklch(61% 0.17556 276.02)",
+          "oklch(72% 0.17556 276.02)",
+          "oklch(84% 0.17556 276.02)",
+          "oklch(95% 0.17556 276.02)"
+        ],
+        "purpose": "Synthetic OKLCH preview ramp only; not shipped application tokens."
+      },
+      "project-orange": {
+        "role": "secondary",
+        "displayName": "Project Orange",
+        "tonalRamp": [
+          "oklch(15% 0.15002 60.11)",
+          "oklch(26% 0.15002 60.11)",
+          "oklch(38% 0.15002 60.11)",
+          "oklch(49% 0.15002 60.11)",
+          "oklch(61% 0.15002 60.11)",
+          "oklch(72% 0.15002 60.11)",
+          "oklch(84% 0.15002 60.11)",
+          "oklch(95% 0.15002 60.11)"
+        ],
+        "purpose": "Synthetic OKLCH preview ramp only; not shipped application tokens."
+      },
+      "project-green": {
+        "role": "secondary",
+        "displayName": "Project Green",
+        "tonalRamp": [
+          "oklch(15% 0.16597 134.10)",
+          "oklch(26% 0.16597 134.10)",
+          "oklch(38% 0.16597 134.10)",
+          "oklch(49% 0.16597 134.10)",
+          "oklch(61% 0.16597 134.10)",
+          "oklch(72% 0.16597 134.10)",
+          "oklch(84% 0.16597 134.10)",
+          "oklch(95% 0.16597 134.10)"
+        ],
+        "purpose": "Synthetic OKLCH preview ramp only; not shipped application tokens."
+      },
+      "project-pink": {
+        "role": "secondary",
+        "displayName": "Project Pink",
+        "tonalRamp": [
+          "oklch(15% 0.13043 347.19)",
+          "oklch(26% 0.13043 347.19)",
+          "oklch(38% 0.13043 347.19)",
+          "oklch(49% 0.13043 347.19)",
+          "oklch(61% 0.13043 347.19)",
+          "oklch(72% 0.13043 347.19)",
+          "oklch(84% 0.13043 347.19)",
+          "oklch(95% 0.13043 347.19)"
+        ],
+        "purpose": "Synthetic OKLCH preview ramp only; not shipped application tokens."
+      },
+      "project-lilac": {
+        "role": "secondary",
+        "displayName": "Project Lilac",
+        "tonalRamp": [
+          "oklch(15% 0.11100 302.28)",
+          "oklch(26% 0.11100 302.28)",
+          "oklch(38% 0.11100 302.28)",
+          "oklch(49% 0.11100 302.28)",
+          "oklch(61% 0.11100 302.28)",
+          "oklch(72% 0.11100 302.28)",
+          "oklch(84% 0.11100 302.28)",
+          "oklch(95% 0.11100 302.28)"
+        ],
+        "purpose": "Synthetic OKLCH preview ramp only; not shipped application tokens."
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Session timer",
+        "purpose": "SwiftUI regular system monospaced design; native points."
+      },
+      "label": {
+        "displayName": "Functional state/list label",
+        "purpose": "User-approved running/paused state and project list labels; native SF10pt medium,0.4pt tracking."
+      }
+    },
+    "motion": [
+      {
+        "name": "notch-expansion",
+        "value": "SwiftUI .easeInOut(duration: 0.25)",
+        "purpose": "Expansion/collapse animation on isExpanded."
+      }
+    ],
+    "shadows": [],
+    "breakpoints": []
+  },
+  "components": [
+    {
+      "name": "Session primary action",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Illustrative native-point translation; native SwiftUI ButtonStyle is authoritative. Hover does not add a native fill change; browser focus indicates keyboard access.",
+      "html": "<button class=\"ds-primary\">Pausar</button>",
+      "css": ".ds-primary{font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-size:13px;font-weight:500;min-height:36px;border-radius:8px;padding:0 12px;background:rgb(91%,91%,91%);color:#000;border:0}.ds-primary:hover{background:rgb(91%,91%,91%)}.ds-primary:active{background:rgb(72%,72%,72%);opacity:.85}.ds-primary:focus-visible{outline:2px solid #fff;outline-offset:2px}"
+    },
+    {
+      "name": "Session secondary action",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Outlined stop action; focus outline is a browser-accessibility approximation, not a new native token.",
+      "html": "<button class=\"ds-secondary\">Encerrar</button>",
+      "css": ".ds-secondary{font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-size:13px;font-weight:500;min-height:36px;border-radius:8px;padding:0 12px;background:rgba(255,255,255,.065);color:#fff;border:1px solid rgba(255,255,255,.2);width:114px}.ds-secondary:hover{background:rgba(255,255,255,.065)}.ds-secondary:active{opacity:.85}.ds-secondary:focus-visible{outline:2px solid #fff;outline-offset:2px}"
+    },
+    {
+      "name": "Project search",
+      "kind": "input",
+      "refersTo": "search",
+      "description": "Search focus changes the source border opacity; icon and clear action remain native SF Symbols in the app.",
+      "html": "<input class=\"ds-search\" aria-label=\"Buscar projeto\" placeholder=\"Buscar projeto…\">",
+      "css": ".ds-search{font-family:-apple-system,BlinkMacSystemFont,sans-serif;height:34px;border-radius:8px;background:rgba(255,255,255,.065);border:1px solid rgba(255,255,255,.08);padding:0 11px;font-size:12px;color:#fff}.ds-search::placeholder{color:#a5a7ae}.ds-search:hover{border-color:rgba(255,255,255,.08)}.ds-search:focus-visible{outline:none;border-color:rgba(255,255,255,.5)}"
+    },
+    {
+      "name": "Project row",
+      "kind": "button",
+      "refersTo": "project-row",
+      "description": "Compact row with identifier and hover play outline; the browser focus outline is illustrative.",
+      "html": "<button class=\"ds-row\"><span class=\"ds-dot\"></span><span class=\"ds-copy\">Projeto Atlas<small class=\"ds-client\">Cliente exemplo</small></span><span class=\"ds-play\"><svg width=\"10\" height=\"10\" viewBox=\"0 0 10 10\" aria-hidden=\"true\"><path fill=\"currentColor\" d=\"M2 1L9 5L2 9Z\"/></svg></span></button>",
+      "css": ".ds-row{font-family:-apple-system,BlinkMacSystemFont,sans-serif;display:flex;align-items:center;gap:12px;height:46px;width:308px;padding:0 6px;border:0;border-radius:6px;background:transparent;color:#fff;text-align:left;font-size:13px;font-weight:500}.ds-dot{width:12px;height:12px;border-radius:50%;background:rgb(22%,80%,81%)}.ds-copy{flex:1}.ds-client{display:block;margin-top:3px;font-size:11px;font-weight:400;color:#a5a7ae}.ds-play{display:grid;place-items:center;width:26px;height:26px;border-radius:50%;border:1px solid rgba(255,255,255,.3)}.ds-row:hover{background:rgba(255,255,255,.07)}.ds-row:hover .ds-play{border-color:rgba(255,255,255,.6)}.ds-row:focus-visible{outline:2px solid #fff;outline-offset:2px}"
+    },
+    {
+      "name": "Session timer",
+      "kind": "custom",
+      "refersTo": "timer",
+      "description": "Native monospaced regular timer; browser font approximation cannot establish native metrics.",
+      "html": "<div class=\"ds-timer\" aria-label=\"Tempo da sessão\">00:42:18</div>",
+      "css": ".ds-timer{font-family:ui-monospace,SFMono-Regular,monospace;font-size:42px;font-weight:400;font-variant-numeric:tabular-nums;color:#fff;text-align:center;padding:3px 0}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Camera-Integrated Session Panel",
+    "overview": "The approved notch world joins an opaque black session panel to the physical screen edge. Restrained gray text, native SF typography and small project identifiers keep the session and its controls readable in a compact surface.\n\nThis document governs the notch panel only. Dashboard, other application screens and the menu bar retain their incumbent UI; these rules do not mandate an application-wide rebrand. Measurements describe native SwiftUI/AppKit points, not CSS implementation. The source is authoritative; the sidecar includes illustrative browser translations for the design panel.",
+    "keyCharacteristics": [
+      "Opaque camera-integrated silhouette with concave shoulders.",
+      "A large monospaced session timer and clear primary action.",
+      "Compact project rows, bounded scrolling and a visible utility footer."
+    ],
+    "rules": [
+      {
+        "name": "The Camera Clearance Rule",
+        "body": "Keep the expanded content below the physical camera height; the black silhouette begins at the physical screen edge.",
+        "section": "layout"
+      },
+      {
+        "name": "The Session Hierarchy Rule",
+        "body": "Reserve the prominent light button for the current session’s main action; project colors identify projects.",
+        "section": "colors"
+      }
+    ],
+    "dos": [
+      "Do preserve physical camera clearance and the complete concave shoulders.",
+      "Do keep the daily total and footer outside the bounded project scroll area.",
+      "Do use the native system font and monospaced timer design in this macOS surface.",
+      "Do preserve project identity colors consistently across launches and devices."
+    ],
+    "donts": [
+      "Don’t replace the opaque camera-integrated background with translucent material.",
+      "Don’t stretch the panel to accommodate long project names; truncate names and expose their full value through help.",
+      "Don’t apply this notch-only system to other application screens without a separate design decision."
+    ]
+  }
+}

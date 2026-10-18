@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "kind": "native-macos-point-spec",
+  "source": "current SwiftUI sources and NSHostingView captures; manually recorded, not comp-spec output",
+  "approvedConcept": ".impeccable/mocks/notch-approved.png",
+  "frame": {
+    "windowWidthPoints": 368,
+    "bodyWidthPoints": 340,
+    "shoulderRadiusPoints": 14,
+    "bottomRadiusPoints": 20,
+    "captureCameraSafeAreaPoints": 32,
+    "realCameraSafeArea": "NSScreen safeAreaInsets.top",
+    "captureSideContextPoints": 32,
+    "captureScale": 2
+  },
+  "typography": {
+    "family": "native SF",
+    "timerPoints": 42,
+    "projectTitlePoints": 16,
+    "brandPoints": 14,
+    "bodyPoints": 12,
+    "labelPoints": 10
+  },
+  "layout": {
+    "paddingPoints": 16,
+    "groupGapPoints": 14,
+    "projectRowHeightPoints": 46,
+    "listMaxHeightPoints": 144,
+    "rowSeparatorPoints": 1,
+    "buttonHeightPoints": 36,
+    "searchHeightPoints": 34
+  },
+  "colors": {
+    "background": "#000000",
+    "text": "#FFFFFF",
+    "secondary": "#A5A7AE"
+  },
+  "requiredCaptures": [
+    ".impeccable/review/notch-idle.png",
+    ".impeccable/review/notch-long-content.png",
+    ".impeccable/review/notch-paused.png",
+    ".impeccable/review/notch-running.png",
+    ".impeccable/review/notch-search-empty.png"
+  ],
+  "nativeCode": [
+    "WorkLog/Notch/NotchShape.swift",
+    "WorkLog/Notch/NotchContentView.swift",
+    "WorkLog/Notch/NotchPanelView.swift",
+    "WorkLog/Notch/NotchPanelStyle.swift"
+  ],
+  "limitations": [
+    "No native live window/event testing: user desktop not operated.",
+    "No automated pixel comp score: enlarged concept and native point-sized capture use different composition frames.",
+    "No concept roll: direction provided and approved directly by user."
+  ]
+}

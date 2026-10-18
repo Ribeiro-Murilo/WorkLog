@@ -17,6 +17,12 @@ final class DisplayModeManager {
     @ObservationIgnored private var screenRecovery: NotchScreenRecovery?
 
     private(set) var isMenuBarVisible = true
+    private(set) var isNotchPinned = false
+
+    func setNotchPinned(_ pinned: Bool) {
+        isNotchPinned = pinned
+        notchController.isPinned = pinned
+    }
 
     init(settingsRepository: SettingsRepositoryProtocol, timerService: TimerServiceProtocol) {
         self.settingsRepository = settingsRepository
@@ -69,6 +75,7 @@ final class DisplayModeManager {
 
         switch effectiveMode {
         case .menuBar:
+            setNotchPinned(false)
             isMenuBarVisible = true
             notchController.dismiss()
             if preferredMode == .notch {

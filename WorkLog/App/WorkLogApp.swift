@@ -18,8 +18,18 @@ struct WorkLogApp: App {
         let dependencies = DependencyContainer(modelContext: persistenceController.mainContext)
         self.dependencies = dependencies
         appDelegate.storageMigrationNotice = persistenceController.migrationNotice
+        let notchViewModel = NotchPanelViewModel(
+            timerService: dependencies.timerService,
+            projectRepository: dependencies.projectRepository,
+            sessionRepository: dependencies.sessionRepository,
+            settingsRepository: dependencies.settingsRepository
+        )
         dependencies.displayModeManager.configureNotchContent {
-            MenuBarPopoverView().environment(\.dependencies, dependencies)
+            NotchPanelView(viewModel: notchViewModel, isPinned: Binding(
+                get: { dependencies.displayModeManager.isNotchPinned },
+                set: { dependencies.displayModeManager.setNotchPinned($0) }
+            ))
+            .environment(\.dependencies, dependencies)
         } collapsedTrailing: {
             NotchTimerBadge().environment(\.dependencies, dependencies)
         }

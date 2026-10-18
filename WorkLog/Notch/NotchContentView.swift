@@ -44,20 +44,10 @@ struct NotchContentView<ExpandedContent: View, CollapsedTrailing: View>: View {
 
     private var expandedBody: some View {
         ZStack(alignment: .top) {
-            // Base sólida escura garante que o painel SEMPRE tenha fundo,
-            // mesmo quando o material translúcido não renderiza nada atrás
-            // do notch (topo da tela, sem pixels reais por trás da janela).
-            ZStack {
-                Rectangle().fill(Color.black)
-                NotchVisualEffectView(material: .menu)
-                Rectangle().fill(.ultraThinMaterial.opacity(0.5))
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .clipShape(NotchShape(cornerRadius: 20))
-            .overlay(
-                NotchShape(cornerRadius: 20)
-                    .stroke(Color.white.opacity(0.12), lineWidth: 1)
-            )
+            // Um fundo opaco une o painel à câmera, inclusive sem pixels por trás.
+            NotchShape(cornerRadius: NotchPanelMetrics.bottomRadius,
+                       shoulderRadius: NotchPanelMetrics.shoulderRadius)
+                .fill(Color.black)
 
             expandedContent()
                 .fixedSize(horizontal: false, vertical: true)
@@ -68,6 +58,7 @@ struct NotchContentView<ExpandedContent: View, CollapsedTrailing: View>: View {
                     onExpandedHeightChange(height)
                 }
         }
+        .environment(\.colorScheme, .dark)
     }
 
     private var collapsedBody: some View {

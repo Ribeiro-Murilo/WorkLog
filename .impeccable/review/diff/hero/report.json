@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "kind": "native-visual-comparison-record",
+  "comparisonMethod": "independent reviewer visual comparison; not comp-diff output",
+  "automatedCompDiffExecuted": false,
+  "numericFidelityScore": null,
+  "approvedConcept": ".impeccable/mocks/notch-approved.png",
+  "nativeCapture": ".impeccable/review/notch-running.png",
+  "fullReviewDisposition": "fix",
+  "findings": {
+    "topology": "match",
+    "concaveShoulders": "match",
+    "cameraClearance": "match",
+    "type": "native adaptation",
+    "background": "approved opaque black adaptation",
+    "controls": "match",
+    "projectSeparators": "restored in final batch"
+  },
+  "limitations": [
+    "No native live window/event testing: user desktop not operated.",
+    "No automated pixel comp score: enlarged concept and native point-sized capture use different composition frames.",
+    "No concept roll: direction provided and approved directly by user."
+  ],
+  "verdictPass": {
+    "disposition": "fix",
+    "resolved": [
+      "native evidence",
+      "project separators",
+      "direct-user direction provenance"
+    ],
+    "remainingAestheticRecommendation": "Remove state eyebrow above project",
+    "mainAgentDecision": "Keep approved state hierarchy per user direction; no material native visual regression observed by reviewer"
+  }
+}

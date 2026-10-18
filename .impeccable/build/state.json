@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "kind": "native-macos-verification-record",
+  "toolManagedBuildPhaseState": false,
+  "source": "manual record of commands actually executed",
+  "date": "2026-10-17",
+  "direction": "direct-user-approved",
+  "conceptRoll": {
+    "executed": false,
+    "seed": null
+  },
+  "verification": {
+    "xcodeDebugBuild": "passed",
+    "headlessTests": {
+      "passed": 123,
+      "suites": 22
+    },
+    "nativeCaptures": [
+      ".impeccable/review/notch-idle.png",
+      ".impeccable/review/notch-long-content.png",
+      ".impeccable/review/notch-paused.png",
+      ".impeccable/review/notch-running.png",
+      ".impeccable/review/notch-search-empty.png"
+    ],
+    "geometryTests": "passed",
+    "whitespaceDiff": "passed"
+  },
+  "compPipeline": {
+    "executed": false,
+    "status": "not_run",
+    "note": "Native SwiftUI implementation; no HTML/CSS comp-spec, scaffold or comp-diff gate was run. Do not read this as a passed tool gate."
+  },
+  "finishReview": {
+    "independentDisposition": "fix",
+    "materialNativeVisualRegressions": "none observed",
+    "fixedFindings": [
+      "native evidence and honest provenance",
+      "project row separators"
+    ],
+    "remainingRecommendation": "Remove state eyebrow above project",
+    "implementationDecision": "Retained approved state hierarchy to honor explicit user-approved composition; user direction takes precedence over skill aesthetic rule",
+    "scope": "native offscreen visual inspection only"
+  },
+  "desktopInteracted": false,
+  "published": false,
+  "installed": false
+}
