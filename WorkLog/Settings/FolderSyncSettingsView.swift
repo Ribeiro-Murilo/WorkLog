@@ -20,12 +20,13 @@ struct FolderSyncSettingsView: View {
                 .disabled(isBusy)
 
                 if let path = service.folderPath {
+                    // O texto selecionável já expõe o caminho à acessibilidade.
+                    // Sobrescrever seu label pode causar recursão AX ao trocar abas no macOS 27.
                     Text(path)
                         .font(.callout)
                         .foregroundStyle(.secondary)
                         .textSelection(.enabled)
                         .fixedSize(horizontal: false, vertical: true)
-                        .accessibilityLabel("Pasta de sincronização: \(path)")
                 }
             } header: {
                 Text("Pasta compartilhada")
