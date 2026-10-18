@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct SessionFormView: View {
@@ -15,19 +16,12 @@ struct SessionFormView: View {
         NavigationStack {
             Form {
                 if let viewModel {
-                    Section("Período") {
-                        DatePicker("Data", selection: Binding(get: { viewModel.date }, set: { viewModel.date = $0 }), displayedComponents: .date)
-                        DatePicker("Início", selection: Binding(get: { viewModel.startTime }, set: { viewModel.startTime = $0 }))
-                        DatePicker("Fim", selection: Binding(get: { viewModel.endTime }, set: { viewModel.endTime = $0 }))
-                    }
-                    .disabled(viewModel.isTimeEditingLocked)
-                    if let explanation = viewModel.timeEditingExplanation {
-                        Text(explanation).font(.callout).foregroundStyle(.secondary)
-                    }
+                    SessionPeriodFields(viewModel: viewModel)
                     if !viewModel.conflictingSessions.isEmpty {
                         SessionConflictSection(
                             sessions: viewModel.conflictingSessions,
                             suggestedInterval: viewModel.suggestedInterval,
+                            offersSuggestion: !viewModel.usesCycleEditor,
                             onApply: viewModel.applySuggestedInterval
                         )
                     }
@@ -60,6 +54,7 @@ struct SessionFormView: View {
                             dismiss()
                         }
                     }
+                    .disabled(viewModel == nil || viewModel?.isTimeEditingLocked == true)
                 }
             }
             .frame(minWidth: 420, idealWidth: 480, minHeight: 440, idealHeight: 580)
@@ -77,6 +72,121 @@ struct SessionFormView: View {
     }
 }
 
+/// Campos reais compartilhados com a verificação visual de dados sintéticos.
+struct SessionPeriodFields: View {
+    let viewModel: SessionFormViewModel
+
+    var body: some View {
+        if viewModel.isTimeEditingLocked {
+            Section("Ciclos") {
+                SessionCycleDetailsView(periods: viewModel.editingSession?.workPeriods ?? viewModel.cyclePeriods)
+            }
+        } else if viewModel.usesCycleEditor {
+            ForEach(Array(viewModel.cyclePeriods.enumerated()), id: \.offset) { index, period in
+                Section("Ciclo \(index + 1)") {
+                    CycleDateField("Início", selection: Binding(
+                        get: { viewModel.cyclePeriods[index].start },
+                        set: { viewModel.updateCycleStart(at: index, to: $0) }
+                    ))
+                    if let end = period.end {
+                        CycleDateField("Fim", selection: Binding(
+                            get: { viewModel.cyclePeriods[index].end ?? end },
+                            set: { viewModel.updateCycleEnd(at: index, to: $0) }
+                        ))
+                        LabeledContent("Duração") {
+                            Text(max(0, end.timeIntervalSince(period.start)).formattedClock(showSeconds: true))
+                                .monospacedDigit()
+                        }
+                    } else {
+                        LabeledContent("Fim", value: "Em andamento")
+                    }
+                }
+            }
+            Section {
+                LabeledContent("Tempo trabalhado") {
+                    Text(viewModel.cyclesTotal.formattedClock(showSeconds: true)).monospacedDigit()
+                }
+                Text("As pausas entre os ciclos não entram no total.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+        } else {
+            Section("Período") {
+                DatePicker("Data", selection: Binding(get: { viewModel.date }, set: { viewModel.date = $0 }), displayedComponents: .date)
+                DatePicker("Início", selection: Binding(get: { viewModel.startTime }, set: { viewModel.startTime = $0 }))
+                DatePicker("Fim", selection: Binding(get: { viewModel.endTime }, set: { viewModel.endTime = $0 }))
+            }
+        }
+        if let explanation = viewModel.timeEditingExplanation {
+            Text(explanation)
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        if let message = viewModel.cycleValidationMessage {
+            Text(message)
+                .font(.callout)
+                .foregroundStyle(.red)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityLabel("Horários inválidos: \(message)")
+        }
+    }
+}
+
+/// O DatePicker SwiftUI no macOS não oferece segundos. O controle AppKit mantém
+/// datas completas e precisão de segundos, inclusive em ciclos curtos.
+private struct CycleDateField: View {
+    let title: String
+    @Binding var selection: Date
+
+    init(_ title: String, selection: Binding<Date>) {
+        self.title = title
+        _selection = selection
+    }
+
+    var body: some View {
+        LabeledContent(title) {
+            CycleDatePicker(title: title, selection: $selection)
+                .frame(width: 270, height: 24)
+        }
+    }
+}
+
+private struct CycleDatePicker: NSViewRepresentable {
+    @Environment(\.locale) private var locale
+    @Environment(\.calendar) private var calendar
+    @Environment(\.timeZone) private var timeZone
+    let title: String
+    @Binding var selection: Date
+
+    func makeCoordinator() -> Coordinator { Coordinator(selection: $selection) }
+
+    func makeNSView(context: Context) -> NSDatePicker {
+        let picker = NSDatePicker()
+        picker.datePickerStyle = .textFieldAndStepper
+        picker.datePickerElements = [.yearMonthDay, .hourMinuteSecond]
+        picker.datePickerMode = .single
+        picker.target = context.coordinator
+        picker.action = #selector(Coordinator.changed(_:))
+        return picker
+    }
+
+    func updateNSView(_ picker: NSDatePicker, context: Context) {
+        context.coordinator.selection = $selection
+        picker.locale = locale
+        picker.calendar = calendar
+        picker.timeZone = timeZone
+        picker.dateValue = selection
+        picker.setAccessibilityLabel(title)
+    }
+
+    final class Coordinator: NSObject {
+        var selection: Binding<Date>
+        init(selection: Binding<Date>) { self.selection = selection }
+        @objc func changed(_ picker: NSDatePicker) { selection.wrappedValue = picker.dateValue }
+    }
+}
+
 
 /// Native form section shared by creation and editing, with explicit suggestion application.
 struct SessionConflictSection: View {
@@ -84,6 +194,7 @@ struct SessionConflictSection: View {
 
     let sessions: [Session]
     let suggestedInterval: DateInterval?
+    var offersSuggestion = true
     let onApply: () -> Void
 
     var body: some View {
@@ -116,7 +227,7 @@ struct SessionConflictSection: View {
                     Button("Usar horário sugerido", action: onApply)
                 }
                 .padding(.vertical, 4)
-            } else {
+            } else if offersSuggestion {
                 Text("Não há horário livre com essa duração no mesmo dia do início. Altere a data ou a duração.")
                     .font(.callout)
                     .foregroundStyle(.secondary)

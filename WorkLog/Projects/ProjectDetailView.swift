@@ -170,9 +170,8 @@ struct ProjectDetailView: View {
             } else {
                 VStack(spacing: 0) {
                     ForEach(viewModel.sessions) { session in
-                        HStack {
-                            SessionRowView(session: session)
-                            Spacer()
+                        HStack(alignment: .top) {
+                            SessionRowView(session: session, onEditCycles: { sessionPendingEdit = session })
                             Menu {
                                 Button("Editar") { sessionPendingEdit = session }
                                 Button("Excluir", role: .destructive) { sessionPendingDeletion = session }
@@ -181,6 +180,7 @@ struct ProjectDetailView: View {
                             }
                             .menuStyle(.borderlessButton)
                             .frame(width: 24)
+                            .padding(.top, 4)
                         }
                         if session.id != viewModel.sessions.last?.id {
                             Divider()

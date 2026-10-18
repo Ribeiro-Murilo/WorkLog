@@ -24,6 +24,10 @@ final class SessionFormViewModel {
     private(set) var conflictingSessions: [Session] = []
     private(set) var suggestedInterval: DateInterval?
     private(set) var availabilityError: String?
+    private(set) var cyclePeriods: [SessionWorkPeriod] = []
+    private(set) var cycleValidationMessage: String?
+    private var sourcePeriods: [SessionWorkPeriod] = []
+    private var sourceStatus: SessionStatus?
 
     private let project: Project
     private let sessionRepository: SessionRepositoryProtocol
@@ -33,11 +37,14 @@ final class SessionFormViewModel {
     private(set) var editingSession: Session?
 
     var isEditing: Bool { editingSession != nil }
-    var isTimeEditingLocked: Bool { (editingSession?.workPeriods.count ?? 0) > 1 || editingSession?.status == .running }
+    var usesCycleEditor: Bool { isEditing && sourcePeriods.count > 1 }
+    var cyclesTotal: TimeInterval {
+        cyclePeriods.reduce(0) { $0 + max(0, ($1.end ?? $1.start).timeIntervalSince($1.start)) }
+    }
+    var isTimeEditingLocked: Bool { editingSession?.status == .running }
     var timeEditingExplanation: String? {
         guard isTimeEditingLocked else { return nil }
-        if editingSession?.status == .running { return "Pause ou encerre o timer antes de editar esta sessão." }
-        return "Esta sessão possui vários trechos de trabalho. Os horários são preservados para manter as pausas; você pode editar a observação."
+        return "Pause ou encerre o timer antes de editar esta sessão."
     }
 
     init(
@@ -61,6 +68,9 @@ final class SessionFormViewModel {
     func populate(from session: Session) {
         synchronizingDates = true
         editingSession = session
+        sourcePeriods = session.workPeriods
+        sourceStatus = session.status
+        cyclePeriods = sourcePeriods
         startTime = session.startTime
         endTime = session.endTime ?? session.startTime
         date = calendar.startOfDay(for: startTime)
@@ -92,7 +102,14 @@ final class SessionFormViewModel {
         suggestedInterval = nil
         availabilityError = nil
         errorMessage = nil
-        guard !isTimeEditingLocked, endTime > startTime else { return }
+        cycleValidationMessage = nil
+        guard !isTimeEditingLocked else { return }
+        if usesCycleEditor {
+            do { cycleValidationMessage = try cycleProblem() }
+            catch { availabilityError = "Não foi possível consultar os horários: \(error.localizedDescription)" }
+            return
+        }
+        guard endTime > startTime else { return }
         do {
             conflictingSessions = try sessionRepository.conflictingSessions(
                 start: startTime, end: endTime, excluding: editingSession?.id)
@@ -108,6 +125,7 @@ final class SessionFormViewModel {
     }
 
     func applySuggestedInterval() {
+        guard !usesCycleEditor, !isTimeEditingLocked else { return }
         guard let interval = suggestedInterval else { return }
         synchronizingDates = true
         startTime = interval.start
@@ -117,17 +135,88 @@ final class SessionFormViewModel {
         refreshAvailability()
     }
 
+    func updateCycleStart(at index: Int, to date: Date) {
+        guard usesCycleEditor, !isTimeEditingLocked, cyclePeriods.indices.contains(index) else { return }
+        cyclePeriods[index].start = date
+        refreshAvailability()
+    }
+
+    func updateCycleEnd(at index: Int, to date: Date) {
+        guard usesCycleEditor, !isTimeEditingLocked, cyclePeriods.indices.contains(index) else { return }
+        cyclePeriods[index].end = date
+        refreshAvailability()
+    }
+
+    /// Valida os trechos, sem usar o envelope da sessão que também inclui as pausas.
+    private func cycleProblem() throws -> String? {
+        for (index, period) in cyclePeriods.enumerated() {
+            guard let end = period.end, period.start.timeIntervalSinceReferenceDate.isFinite,
+                  end.timeIntervalSinceReferenceDate.isFinite, end > period.start else {
+                return "Ciclo \(index + 1): o fim deve ser posterior ao início."
+            }
+            try validationService.validateSessionFields(project: project, startTime: period.start, endTime: end)
+            if index > 0, let previousEnd = cyclePeriods[index - 1].end, period.start < previousEnd {
+                return "Ciclo \(index + 1): o início deve ser igual ou posterior ao fim do ciclo \(index)."
+            }
+        }
+        for (index, period) in cyclePeriods.enumerated() {
+            guard let end = period.end else { continue }
+            let conflicts = try sessionRepository.conflictingSessions(
+                start: period.start, end: end, excluding: editingSession?.id)
+            if let conflict = conflicts.first {
+                conflictingSessions = conflicts
+                let formatter = DateFormatter()
+                formatter.locale = Locale(identifier: "pt_BR")
+                formatter.calendar = calendar
+                formatter.timeZone = calendar.timeZone
+                formatter.dateFormat = "dd/MM/yyyy HH:mm:ss"
+                let busy = conflict.occupiedWorkIntervals.first { $0.start < end && $0.end > period.start }
+                let startText = formatter.string(from: busy?.start ?? conflict.startTime)
+                let endText = busy?.end == .distantFuture ? "em andamento"
+                    : formatter.string(from: busy?.end ?? conflict.endTime ?? conflict.startTime)
+                return "Ciclo \(index + 1): conflito com \(conflict.project?.name ?? "outro projeto"), de \(startText) até \(endText)."
+            }
+        }
+        return nil
+    }
+
+    /// A edição aberta não pode sobrescrever um ciclo criado por outra retomada.
+    private func canSave(_ session: Session) throws -> Bool {
+        guard let persisted = try sessionRepository.fetchAll(for: nil).first(where: { $0.id == session.id }) else {
+            errorMessage = "Esta sessão foi removida. Feche o formulário e atualize a lista."
+            return false
+        }
+        guard persisted.status != .running else {
+            errorMessage = "Pause ou encerre o timer antes de editar esta sessão."
+            return false
+        }
+        guard persisted.workPeriods == sourcePeriods, persisted.status == sourceStatus else {
+            errorMessage = "Os ciclos desta sessão foram alterados. Reabra a edição para carregar os horários atuais."
+            return false
+        }
+        return true
+    }
+
     @discardableResult
     func save() -> Bool {
         do {
             if let session = editingSession {
-                guard session.status != .running else {
-                    errorMessage = "Pause ou encerre o timer antes de editar esta sessão."
-                    return false
-                }
-                if session.workPeriods.count > 1 {
+                guard try canSave(session) else { return false }
+                if usesCycleEditor {
+                    refreshAvailability()
+                    if let problem = cycleValidationMessage ?? availabilityError {
+                        errorMessage = problem
+                        return false
+                    }
+                    guard let first = cyclePeriods.first, let lastEnd = cyclePeriods.last?.end else { return false }
+                    session.workPeriods = cyclePeriods
+                    session.date = calendar.startOfDay(for: first.start)
+                    session.startTime = first.start
+                    session.endTime = lastEnd
+                    session.durationSeconds = cyclesTotal
                     session.note = note
                     try sessionRepository.update(session)
+                    sourcePeriods = session.workPeriods
                     return true
                 }
             }

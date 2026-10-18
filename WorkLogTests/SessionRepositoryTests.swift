@@ -285,14 +285,16 @@ struct ResumedSessionIntegrationTests {
         #expect(try repository.hasOverlap(start: time(20), end: time(21), excluding: nil))
     }
 
-    @Test func editingMultiPeriodOnlyChangesNoteAndRunningSessionCannotSave() throws {
+    @Test func multiPeriodEditorUnlocksWithoutChangingDraftAndRunningSessionCannotSave() throws {
         let repository = SessionRepository(modelContext: makeInMemoryContext())
         let project = Project(name: "P", client: "C", dailyRate: 0, category: .work)
         let session = resumed(project: project)
         try repository.insert(session)
         let originalPeriods = session.workPeriods
         let form = SessionFormViewModel(project: project, sessionRepository: repository, calendar: calendar, editing: session)
-        #expect(form.isTimeEditingLocked)
+        #expect(!form.isTimeEditingLocked)
+        #expect(form.note == session.note)
+        #expect(session.workPeriods == originalPeriods)
         form.startTime = time(8)
         form.endTime = time(14)
         form.note = "Observação corrigida"
@@ -405,5 +407,225 @@ struct ResumedSessionIntegrationTests {
         let menu = MenuBarViewModel(timerService: timer, projectRepository: projects,
             sessionRepository: repository, settingsRepository: settings)
         #expect(menu.todayTotal == 3600)
+    }
+}
+
+@MainActor
+struct SessionCycleEditorTests {
+    private var calendar: Calendar {
+        var value = Calendar(identifier: .gregorian)
+        value.timeZone = TimeZone(secondsFromGMT: 0)!
+        return value
+    }
+    private func time(_ hour: Int, _ minute: Int = 0, day: Int = 17) -> Date {
+        calendar.date(from: DateComponents(year: 2026, month: 10, day: day, hour: hour, minute: minute))!
+    }
+    private func session(project: Project, status: SessionStatus = .paused) -> Session {
+        let session = Session(project: project, date: time(0), startTime: time(9), endTime: time(16),
+            durationSeconds: 10800, note: "Nota original", category: .work, status: status)
+        session.workPeriods = [.init(start: time(9), end: time(10)), .init(start: time(12), end: time(13)),
+            .init(start: time(15), end: time(16))]
+        return session
+    }
+
+    @Test func editsMiddleCycleWithoutChangingNeighborsIdentityStatusOrCount() throws {
+        for status in [SessionStatus.paused, .completed] {
+            let repository = SessionRepository(modelContext: makeInMemoryContext())
+            let project = Project(name: "P", client: "C", dailyRate: 800, category: .work)
+            let session = session(project: project, status: status)
+            try repository.insert(session)
+            let id = session.id
+            let originals = session.workPeriods
+            let form = SessionFormViewModel(project: project, sessionRepository: repository, calendar: calendar, editing: session)
+            #expect(form.usesCycleEditor)
+            #expect(!form.isTimeEditingLocked)
+            form.updateCycleStart(at: 1, to: time(11, 30))
+            form.note = "Corrigida"
+            #expect(session.workPeriods == originals)
+            #expect(session.note == "Nota original")
+            #expect(form.cyclesTotal == 12600)
+            #expect(form.save())
+            #expect(session.id == id)
+            #expect(try repository.fetchAll(for: nil).map(\.id) == [id])
+            #expect(session.workPeriods.count == 3)
+            #expect(session.workPeriods[0] == originals[0])
+            #expect(session.workPeriods[2] == originals[2])
+            #expect(session.workPeriods[1] == SessionWorkPeriod(start: time(11, 30), end: time(13)))
+            #expect(session.durationSeconds == 12600)
+            #expect(session.estimatedValue == 350)
+            #expect(session.note == "Corrigida")
+            #expect(session.status == status)
+            #expect(session.startTime == time(9))
+            #expect(session.endTime == time(16))
+        }
+    }
+
+    @Test func rejectsInvalidAndOverlappingCyclesWithoutMutatingSession() throws {
+        let repository = SessionRepository(modelContext: makeInMemoryContext())
+        let project = Project(name: "P", client: "C", dailyRate: 0, category: .work)
+        let session = session(project: project)
+        try repository.insert(session)
+        let original = session.workPeriods
+        let form = SessionFormViewModel(project: project, sessionRepository: repository, calendar: calendar, editing: session)
+        form.note = "Não salvar"
+        form.updateCycleEnd(at: 1, to: time(12))
+        #expect(form.cycleValidationMessage?.contains("Ciclo 2") == true)
+        #expect(!form.save())
+        form.updateCycleEnd(at: 1, to: time(13))
+        form.updateCycleStart(at: 1, to: time(9, 30))
+        #expect(form.cycleValidationMessage?.contains("Ciclo 2") == true)
+        #expect(!form.save())
+        form.updateCycleStart(at: 1, to: time(12))
+        form.updateCycleEnd(at: 1, to: time(15, 1))
+        #expect(form.cycleValidationMessage?.contains("Ciclo 3") == true)
+        #expect(!form.save())
+        #expect(session.workPeriods == original)
+        #expect(session.durationSeconds == 10800)
+        #expect(session.note == "Nota original")
+    }
+
+    @Test func allowsAdjacentCyclesAndOtherWorkInsidePauseButRevalidatesExternalConflictAtSave() throws {
+        let repository = SessionRepository(modelContext: makeInMemoryContext())
+        let project = Project(name: "P", client: "C", dailyRate: 0, category: .work)
+        let otherProject = Project(name: "Projeto externo", client: "C", dailyRate: 0, category: .work)
+        let session = session(project: project)
+        try repository.insert(session)
+        try repository.insert(Session(project: otherProject, date: time(0), startTime: time(10), endTime: time(11),
+            durationSeconds: 3600, category: .work, status: .completed))
+        let form = SessionFormViewModel(project: project, sessionRepository: repository, calendar: calendar, editing: session)
+        form.updateCycleStart(at: 1, to: time(11))
+        form.updateCycleEnd(at: 1, to: time(15))
+        #expect(form.cycleValidationMessage == nil)
+        #expect(form.suggestedInterval == nil)
+        #expect(form.save())
+        #expect(session.durationSeconds == 21600)
+        let original = session.workPeriods
+        let staleAvailability = SessionFormViewModel(project: project, sessionRepository: repository, calendar: calendar, editing: session)
+        staleAvailability.updateCycleStart(at: 0, to: time(8))
+        let conflict = Session(project: otherProject, date: time(0), startTime: time(8), endTime: time(9),
+            durationSeconds: 3600, category: .work, status: .completed)
+        try repository.insert(conflict)
+        #expect(!staleAvailability.save())
+        #expect(staleAvailability.cycleValidationMessage?.contains("Ciclo 1") == true)
+        #expect(staleAvailability.cycleValidationMessage?.contains("Projeto externo") == true)
+        #expect(staleAvailability.cycleValidationMessage?.contains("08:00:00") == true)
+        #expect(staleAvailability.conflictingSessions.map(\.id) == [conflict.id])
+        #expect(staleAvailability.suggestedInterval == nil)
+        #expect(session.workPeriods == original)
+    }
+
+    @Test func updatesEnvelopeAndDayAcrossMidnightWithoutCountingPause() throws {
+        let repository = SessionRepository(modelContext: makeInMemoryContext())
+        let project = Project(name: "P", client: "C", dailyRate: 0, category: .work)
+        let session = session(project: project)
+        try repository.insert(session)
+        let form = SessionFormViewModel(project: project, sessionRepository: repository, calendar: calendar, editing: session)
+        form.updateCycleStart(at: 0, to: time(23, day: 18))
+        form.updateCycleEnd(at: 0, to: time(1, day: 19))
+        form.updateCycleStart(at: 1, to: time(2, day: 19))
+        form.updateCycleEnd(at: 1, to: time(3, day: 19))
+        form.updateCycleStart(at: 2, to: time(5, day: 19))
+        form.updateCycleEnd(at: 2, to: time(5, 30, day: 19))
+        #expect(form.cyclesTotal == 12600)
+        #expect(form.save())
+        #expect(session.date == time(0, day: 18))
+        #expect(session.startTime == time(23, day: 18))
+        #expect(session.endTime == time(5, 30, day: 19))
+        #expect(session.durationSeconds == 12600)
+        #expect(try !repository.hasOverlap(start: time(1, day: 19), end: time(2, day: 19), excluding: nil))
+    }
+
+    @Test func abandoningDraftDoesNotChangePersistedCyclesOrNote() throws {
+        let repository = SessionRepository(modelContext: makeInMemoryContext())
+        let project = Project(name: "P", client: "C", dailyRate: 0, category: .work)
+        let session = session(project: project)
+        try repository.insert(session)
+        let original = session.workPeriods
+        do {
+            let form = SessionFormViewModel(project: project, sessionRepository: repository, calendar: calendar, editing: session)
+            form.updateCycleStart(at: 0, to: time(8))
+            form.updateCycleEnd(at: 2, to: time(17))
+            form.note = "Rascunho descartado"
+        }
+        let reloaded = try #require(repository.fetchAll(for: nil).first)
+        #expect(reloaded.workPeriods == original)
+        #expect(reloaded.note == "Nota original")
+        #expect(reloaded.durationSeconds == 10800)
+    }
+
+    @Test func rejectsDeletedChangedOrResumedSessionWithoutOverwritingCurrentData() throws {
+        for change in ["delete", "periods", "resume", "status"] {
+            let repository = SessionRepository(modelContext: makeInMemoryContext())
+            let project = Project(name: "P", client: "C", dailyRate: 0, category: .work)
+            let session = session(project: project)
+            try repository.insert(session)
+            let form = SessionFormViewModel(project: project, sessionRepository: repository, calendar: calendar, editing: session)
+            form.updateCycleStart(at: 0, to: time(8))
+            form.note = "Rascunho obsoleto"
+            if change == "delete" {
+                try repository.delete(session)
+                #expect(!form.save())
+                #expect(form.errorMessage?.contains("removida") == true)
+                #expect(try repository.fetchAll(for: nil).isEmpty)
+            } else {
+                if change == "periods" { session.workPeriods[1].start = time(11) }
+                if change == "resume" {
+                    session.status = .running
+                    session.endTime = nil
+                    session.workPeriods.append(.init(start: time(18), end: nil))
+                }
+                if change == "status" { session.status = .completed }
+                try repository.update(session)
+                let current = session.workPeriods
+                #expect(!form.save())
+                #expect(form.errorMessage != nil)
+                #expect(session.workPeriods == current)
+                #expect(session.note == "Nota original")
+                #expect(session.startTime == time(9))
+            }
+        }
+    }
+
+    @Test func runningSessionLocksCycleUpdatesAndCannotSave() throws {
+        let repository = SessionRepository(modelContext: makeInMemoryContext())
+        let project = Project(name: "P", client: "C", dailyRate: 0, category: .work)
+        let session = session(project: project, status: .running)
+        session.workPeriods[2].end = nil
+        session.endTime = nil
+        try repository.insert(session)
+        let original = session.workPeriods
+        let form = SessionFormViewModel(project: project, sessionRepository: repository, calendar: calendar, editing: session)
+        #expect(form.isTimeEditingLocked)
+        form.updateCycleStart(at: 0, to: time(8))
+        form.updateCycleEnd(at: 2, to: time(17))
+        #expect(form.cyclePeriods == original)
+        #expect(!form.save())
+        #expect(session.workPeriods == original)
+    }
+
+    @Test func savedCycleEditsBecomeAccumulatedTimeWhenSameSessionResumes() throws {
+        let context = makeInMemoryContext()
+        let repository = SessionRepository(modelContext: context)
+        let projects = ProjectRepository(modelContext: context)
+        let project = Project(name: "P", client: "C", dailyRate: 800, category: .work)
+        try projects.insert(project)
+        let session = session(project: project)
+        try repository.insert(session)
+        let form = SessionFormViewModel(project: project, sessionRepository: repository, calendar: calendar, editing: session)
+        form.updateCycleStart(at: 1, to: time(11, 30))
+        #expect(form.save())
+        let saved = session.workPeriods
+        let timer = TimerService(sessionRepository: repository, projectRepository: projects,
+            idleDetectionService: IdleDetectionService(idleThresholdMinutes: 10))
+        try timer.resume(project: project)
+        #expect(timer.activeSession?.id == session.id)
+        #expect(session.status == .running)
+        #expect(session.durationSeconds == 12600)
+        #expect(session.workPeriods.count == 4)
+        #expect(Array(session.workPeriods.prefix(3)) == saved)
+        #expect(session.workPeriods.last?.end == nil)
+        #expect(timer.elapsed >= 12600)
+        #expect(try repository.fetchAll(for: nil).count == 1)
+        try timer.stop()
     }
 }
