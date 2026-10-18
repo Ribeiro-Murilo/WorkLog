@@ -77,42 +77,30 @@ final class BillingViewModel {
         }
         do {
             let interval = period.dateInterval(customStart: customStart, customEnd: customEnd)
-            let closedStatuses: Set<SessionStatus> = [.completed, .paused]
             let sessions = try sessionRepository.fetchSessions(in: interval)
-                .filter { $0.project?.client == client && closedStatuses.contains($0.status) }
-            previewLineItems = Self.groupByProjectAndDay(sessions)
+                .filter { $0.project?.client == client }
+            previewLineItems = Self.groupByProjectAndDay(sessions, in: interval)
         } catch {
             errorMessage = error.localizedDescription
         }
     }
 
     /// Consolida sessões por projeto e dia, igual ao agrupamento usado nos Relatórios.
-    private static func groupByProjectAndDay(_ sessions: [Session]) -> [InvoiceLineItem] {
-        let calendar = Calendar.current
+    private static func groupByProjectAndDay(_ sessions: [Session], in interval: DateInterval) -> [InvoiceLineItem] {
         var order: [String] = []
-        var buckets: [String: [Session]] = [:]
-
+        var buckets: [String: [ReportRow]] = [:]
         for session in sessions {
-            let day = calendar.startOfDay(for: session.date)
-            let projectKey = session.project?.id.uuidString ?? "—"
-            let key = "\(projectKey)#\(day.timeIntervalSinceReferenceDate)"
-            if buckets[key] == nil {
-                buckets[key] = []
-                order.append(key)
+            for row in session.recordedReportRows(in: interval) {
+                let key = "\(session.project?.id.uuidString ?? "—")#\(row.date.timeIntervalSinceReferenceDate)"
+                if buckets[key] == nil { buckets[key] = []; order.append(key) }
+                buckets[key]?.append(row)
             }
-            buckets[key]?.append(session)
         }
-
         return order.compactMap { key -> InvoiceLineItem? in
             guard let group = buckets[key], let first = group.first else { return nil }
-            let duration = group.reduce(0) { $0 + $1.durationSeconds }
-            let value = group.reduce(Decimal(0)) { $0 + $1.estimatedValue }
-            return InvoiceLineItem(
-                date: calendar.startOfDay(for: first.date),
-                projectName: first.project?.name ?? "—",
-                durationSeconds: duration,
-                value: value
-            )
+            return InvoiceLineItem(date: first.date, projectName: first.projectName,
+                durationSeconds: group.reduce(0) { $0 + $1.durationSeconds },
+                value: group.reduce(Decimal(0)) { $0 + $1.estimatedValue })
         }.sorted { $0.date < $1.date }
     }
 

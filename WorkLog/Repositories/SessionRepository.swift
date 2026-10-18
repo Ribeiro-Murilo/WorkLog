@@ -39,17 +39,13 @@ final class SessionRepository: SessionRepositoryProtocol {
                 sortBy: [SortDescriptor(\.startTime, order: .reverse)]
             )
         }
-        return try modelContext.fetch(descriptor)
+        return try modelContext.fetch(descriptor).sorted { $0.latestActivity > $1.latestActivity }
     }
 
     func fetchSessions(in interval: DateInterval) throws -> [Session] {
-        let start = interval.start
-        let end = interval.end
-        let descriptor = FetchDescriptor<Session>(
-            predicate: #Predicate { $0.startTime >= start && $0.startTime <= end },
-            sortBy: [SortDescriptor(\.startTime, order: .reverse)]
-        )
-        return try modelContext.fetch(descriptor)
+        try fetchAll(for: nil).filter { session in
+            session.occupiedWorkIntervals.contains { $0.start < interval.end && $0.end > interval.start }
+        }
     }
 
     func fetchActiveSession() throws -> Session? {
@@ -62,15 +58,11 @@ final class SessionRepository: SessionRepositoryProtocol {
 
     func conflictingSessions(start: Date, end: Date, excluding id: UUID?) throws -> [Session] {
         guard end > start else { return [] }
-        let distantFuture = Date.distantFuture
-        let descriptor = FetchDescriptor<Session>(
-            predicate: #Predicate { session in
-                session.startTime < end && (session.endTime ?? distantFuture) > start
+        return try fetchAll(for: nil)
+            .filter { session in
+                session.id != id && session.occupiedWorkIntervals.contains { $0.start < end && $0.end > start }
             }
-        )
-        return try modelContext.fetch(descriptor)
-            .filter { $0.id != id }
-            .sorted { $0.startTime < $1.startTime }
+            .sorted { $0.latestActivity < $1.latestActivity }
     }
 
     func hasOverlap(start: Date, end: Date, excluding id: UUID?) throws -> Bool {
@@ -78,11 +70,7 @@ final class SessionRepository: SessionRepositoryProtocol {
     }
 
     func fetchRecent(limit: Int) throws -> [Session] {
-        var descriptor = FetchDescriptor<Session>(
-            sortBy: [SortDescriptor(\.startTime, order: .reverse)]
-        )
-        descriptor.fetchLimit = limit
-        return try modelContext.fetch(descriptor)
+        Array(try fetchAll(for: nil).prefix(max(0, limit)))
     }
 
     func insert(_ session: Session) throws {
@@ -142,6 +130,74 @@ struct SessionAvailability {
             let leftDistance = abs(lhs.start.timeIntervalSince(start))
             let rightDistance = abs(rhs.start.timeIntervalSince(start))
             return leftDistance == rightDistance ? lhs.start > rhs.start : leftDistance < rightDistance
+        }
+    }
+}
+
+
+/// Trecho de trabalho fechado, recortado pelo período e pelo dia, sem criar outro registro.
+struct SessionRecordedSlice {
+    let start: Date
+    let end: Date
+    let duration: TimeInterval
+}
+
+extension Session {
+    /// Um trecho aberto reserva o futuro; o intervalo entre trechos continua disponível.
+    var occupiedWorkIntervals: [DateInterval] {
+        if workPeriodsData == nil {
+            let end = endTime ?? .distantFuture
+            return end > startTime ? [DateInterval(start: startTime, end: end)] : []
+        }
+        return workPeriods.compactMap { period in
+            let end = period.end ?? .distantFuture
+            return end > period.start ? DateInterval(start: period.start, end: end) : nil
+        }
+    }
+
+    /// Totais persistidos contam apenas trechos fechados, inclusive de uma sessão retomada em execução.
+    func recordedSlices(in interval: DateInterval, calendar: Calendar = .current) -> [SessionRecordedSlice] {
+        let periods: [SessionWorkPeriod]
+        let scale: Double
+        if workPeriodsData == nil {
+            guard status != .running, let endTime, endTime > startTime else { return [] }
+            periods = [.init(start: startTime, end: endTime)]
+            // Registros legados podem ter duração ajustada: preservar seu total armazenado.
+            scale = max(0, durationSeconds) / endTime.timeIntervalSince(startTime)
+        } else {
+            periods = workPeriods
+            scale = 1
+        }
+        return periods.flatMap { period -> [SessionRecordedSlice] in
+            guard let end = period.end else { return [] }
+            var cursor = max(period.start, interval.start)
+            let limit = min(end, interval.end)
+            var slices: [SessionRecordedSlice] = []
+            while cursor < limit {
+                let dayEnd = calendar.dateInterval(of: .day, for: cursor)?.end ?? limit
+                let sliceEnd = min(limit, dayEnd)
+                guard sliceEnd > cursor else { break }
+                let duration = sliceEnd.timeIntervalSince(cursor) * scale
+                if duration > 0 { slices.append(.init(start: cursor, end: sliceEnd, duration: duration)) }
+                cursor = sliceEnd
+            }
+            return slices
+        }
+    }
+
+    func recordedDuration(in interval: DateInterval = DateInterval(start: .distantPast, end: .distantFuture)) -> TimeInterval {
+        recordedSlices(in: interval).reduce(0) { $0 + $1.duration }
+    }
+
+    func recordedReportRows(in interval: DateInterval) -> [ReportRow] {
+        recordedSlices(in: interval).enumerated().map { index, slice in
+            let rate = project?.dailyRate ?? 0
+            let value = rate > 0 ? rate * Decimal(slice.duration / 3600 / Project.standardWorkdayHours) : 0
+            return ReportRow(id: "\(id.uuidString)#\(index)", projectName: project?.name ?? "—",
+                client: project?.client ?? "—", date: Calendar.current.startOfDay(for: slice.start),
+                startTime: slice.start, endTime: slice.end, durationSeconds: slice.duration,
+                category: category, status: status, estimatedValue: value, note: note,
+                tags: project?.tags ?? [], descriptionText: project?.descriptionText ?? "", sessionCount: 1)
         }
     }
 }

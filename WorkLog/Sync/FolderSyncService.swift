@@ -174,7 +174,7 @@ final class FolderSyncService {
         defer { isSynchronizing = false }
         do {
             var working = state
-            let local = try working.captureLocal(recordStore.snapshot(), deviceID: deviceID, now: .now)
+            let local = try working.captureLocal(localSnapshot(preservingRunningSessionsFrom: working.baseline), deviceID: deviceID, now: .now)
             if !local.isEmpty {
                 try recordStore.saveState(working, scope: scope)
                 state = working
@@ -192,7 +192,7 @@ final class FolderSyncService {
 
             // UI edits may have occurred while file I/O suspended this actor. Capture
             // them before ingesting remote parents, with no suspension before save.
-            let before = try recordStore.snapshot()
+            let before = try localSnapshot(preservingRunningSessionsFrom: working.baseline)
             let lateLocal = try working.captureLocal(before, deviceID: deviceID, now: .now)
             if !lateLocal.isEmpty {
                 try recordStore.saveState(working, scope: scope)
@@ -202,7 +202,7 @@ final class FolderSyncService {
             try working.ingest(batch.operations)
             let projection = try applicableProjection(working, snapshot: before)
             try recordStore.apply(projection.changes)
-            let after = try recordStore.snapshot()
+            let after = try localSnapshot(preservingRunningSessionsFrom: working.baseline)
             working.baseline = after
             try recordStore.saveState(working, scope: scope)
             state = working
@@ -221,11 +221,20 @@ final class FolderSyncService {
         }
     }
 
+    /// An omitted running record is temporarily private to this Mac, not deleted.
+    /// Keep its last closed version until pausing makes it eligible for capture again.
+    private func localSnapshot(preservingRunningSessionsFrom baseline: [SyncRecordKey: Data]) throws -> [SyncRecordKey: Data] {
+        var snapshot = try recordStore.snapshot()
+        for key in try recordStore.runningSessionKeys() { snapshot[key] = baseline[key] }
+        return snapshot
+    }
+
     /// A conflicted or not-yet-delivered project may be absent on a new Mac.
     /// Keep those child versions in the journal until the parent is available.
     private func applicableProjection(_ working: FolderSyncState, snapshot: [SyncRecordKey: Data]) throws
         -> (changes: [SyncRecordChange], deferred: Int) {
         let changes = working.resolvedChanges()
+        let running = try recordStore.runningSessionKeys()
         let deleted = Set(changes.filter { $0.key.entity == .project && $0.payload == nil }.map { $0.key.id })
         var available = Set(snapshot.keys.filter { $0.entity == .project }.map(\.id))
         available.formUnion(changes.filter { $0.key.entity == .project && $0.payload != nil }.map { $0.key.id })
@@ -233,6 +242,12 @@ final class FolderSyncService {
         var applicable: [SyncRecordChange] = []
         var deferred = 0
         for change in changes {
+            if running.contains(change.key) {
+                // Do not reapply the last pause over its resumed local timer. A
+                // different remote version remains pending until the timer pauses.
+                if change.payload != working.baseline[change.key] { deferred += 1 }
+                continue
+            }
             var parentID: UUID?
             if let data = change.payload {
                 if change.key.entity == .session {
@@ -265,14 +280,17 @@ final class FolderSyncService {
     func resolve(_ conflict: SyncConflict, using payload: Data?) async {
         guard isEnabled, !isSynchronizing else { return }
         do {
+            if try recordStore.runningSessionKeys().contains(conflict.key), let id = UUID(uuidString: conflict.key.id) {
+                throw SyncRecordStoreError.runningSession(id)
+            }
             var working = state
             // Reconcile local edits before recording the explicit resolution.
-            _ = try working.captureLocal(recordStore.snapshot(), deviceID: deviceID, now: .now)
+            _ = try working.captureLocal(localSnapshot(preservingRunningSessionsFrom: working.baseline), deviceID: deviceID, now: .now)
             _ = try working.resolve(key: conflict.key, payload: payload, deviceID: deviceID, now: .now)
-            let before = try recordStore.snapshot()
+            let before = try localSnapshot(preservingRunningSessionsFrom: working.baseline)
             let projection = try applicableProjection(working, snapshot: before)
             try recordStore.apply(projection.changes)
-            let after = try recordStore.snapshot()
+            let after = try localSnapshot(preservingRunningSessionsFrom: working.baseline)
             if payload != nil, [.session, .comment].contains(conflict.key.entity), after[conflict.key] != payload {
                 throw FolderSyncResolutionError.unavailableParent
             }

@@ -142,7 +142,7 @@ struct TimerServiceTests {
         try sut.timerService.resume()
 
         #expect(!sut.timerService.isRunning)
-        #expect(try sut.sessionRepository.fetchAll(for: project).count == 2)
+        #expect(try sut.sessionRepository.fetchAll(for: project).count == 1)
     }
 
     @Test func globalResumeRejectsArchivedPausedProject() throws {
@@ -182,7 +182,6 @@ struct TimerServiceTests {
         try sut.timerService.start(project: first)
         try sut.timerService.pause()
         let original = try #require(sut.sessionRepository.fetchAll(for: first).first)
-        let originalEnd = original.endTime
         try sut.timerService.start(project: current)
         let autoPaused = sut.timerService.activeSession
         #expect(try sut.timerService.resumableSession(for: first)?.id == original.id)
@@ -194,9 +193,9 @@ struct TimerServiceTests {
 
         #expect(sut.timerService.activeProject?.id == first.id)
         #expect(sut.timerService.activeSession?.id == resumedID)
-        #expect(resumedID != original.id)
+        #expect(resumedID == original.id)
         #expect(autoPaused?.status == .paused)
-        #expect(original.endTime == originalEnd)
+        #expect(original.endTime == nil)
         #expect(try sut.sessionRepository.fetchAll(for: nil).filter { $0.status == .running }.count == 1)
         try sut.timerService.stop()
     }
@@ -214,7 +213,7 @@ struct TimerServiceTests {
         try sut.timerService.resume(project: project)
 
         #expect(!sut.timerService.isRunning)
-        #expect(try sut.sessionRepository.fetchAll(for: project).count == 2)
+        #expect(try sut.sessionRepository.fetchAll(for: project).count == 1)
     }
 
     @Test func reopeningServiceResumesPausedProjectFromNowAndExcludesPauseDuration() throws {
@@ -228,17 +227,17 @@ struct TimerServiceTests {
         try sut.sessionRepository.insert(original)
         let reopened = TimerService(sessionRepository: sut.sessionRepository, projectRepository: sut.projectRepository,
                                     idleDetectionService: IdleDetectionService(idleThresholdMinutes: 10))
-        let beforeResume = Date.now
         #expect(try reopened.resumableSession(for: nil)?.id == original.id)
 
         try reopened.resume()
         let resumed = try #require(reopened.activeSession)
 
-        #expect(resumed.startTime >= beforeResume)
-        #expect(resumed.id != original.id)
-        #expect(resumed.durationSeconds == 0)
+        #expect(resumed.startTime == originalStart)
+        #expect(resumed.id == original.id)
+        #expect(resumed.durationSeconds == 600)
+        #expect(reopened.elapsed >= 600 && reopened.elapsed < 610)
         #expect(original.durationSeconds == 600)
-        #expect(original.endTime == originalEnd)
+        #expect(original.endTime == nil)
         try reopened.stop()
         #expect(try sut.sessionRepository.fetchAll(for: project).reduce(0) { $0 + $1.durationSeconds } < 610)
     }
@@ -326,6 +325,136 @@ struct TimerServiceTests {
         #expect(contextualUpdateNotified.withLock { $0 })
         #expect(!menu.canResume)
         #expect(!detail.canResume)
+    }
+
+    @Test func multiplePausesKeepIdentityAndExcludeGapsFromAccumulatedTime() throws {
+        let sut = makeSUT()
+        let project = Project(name: "Ciclos", client: "C", dailyRate: 0, category: .work)
+        try sut.projectRepository.insert(project)
+        let start = Date.now.addingTimeInterval(-7200)
+        let original = Session(project: project, date: start, startTime: start,
+                               endTime: start.addingTimeInterval(600), durationSeconds: 600,
+                               note: "Preservar", category: .work, status: .paused)
+        try sut.sessionRepository.insert(original)
+
+        try sut.timerService.resume()
+        var periods = original.workPeriods
+        periods[1].start = Date.now.addingTimeInterval(-120)
+        original.workPeriods = periods
+        try sut.timerService.pause()
+
+        #expect(original.durationSeconds >= 720 && original.durationSeconds < 722)
+        #expect(original.workPeriods.count == 2)
+        #expect(original.workPeriods.allSatisfy { $0.end != nil })
+        let accumulated = original.durationSeconds
+        try sut.timerService.resume()
+        try sut.timerService.resume()
+        #expect(sut.timerService.activeSession?.id == original.id)
+        #expect(sut.timerService.elapsed >= accumulated && sut.timerService.elapsed < accumulated + 2)
+        #expect(original.workPeriods.count == 3)
+        try sut.timerService.stop()
+        try sut.timerService.resume()
+
+        #expect(!sut.timerService.isRunning)
+        #expect(original.status == .completed)
+        #expect(original.startTime == start)
+        #expect(original.date == start)
+        #expect(original.note == "Preservar")
+        #expect(original.durationSeconds >= accumulated && original.durationSeconds < accumulated + 2)
+        #expect(try sut.sessionRepository.fetchAll(for: project).count == 1)
+    }
+
+    @Test func reopeningRunningSessionRestoresAccumulatedAndCurrentSegmentOnly() throws {
+        let sut = makeSUT()
+        let project = Project(name: "Reabrir rodando", client: "C", dailyRate: 0, category: .work)
+        try sut.projectRepository.insert(project)
+        let originalStart = Date.now.addingTimeInterval(-7200)
+        let session = Session(project: project, date: originalStart, startTime: originalStart,
+                              durationSeconds: 600, category: .work, status: .running)
+        session.workPeriods = [
+            SessionWorkPeriod(start: originalStart, end: originalStart.addingTimeInterval(600)),
+            SessionWorkPeriod(start: Date.now.addingTimeInterval(-20), end: nil)
+        ]
+        try sut.sessionRepository.insert(session)
+        let reopened = TimerService(sessionRepository: sut.sessionRepository, projectRepository: sut.projectRepository,
+                                    idleDetectionService: IdleDetectionService(idleThresholdMinutes: 10))
+
+        #expect(reopened.activeSession?.id == session.id)
+        #expect(reopened.elapsed >= 620 && reopened.elapsed < 622)
+        try reopened.stop()
+        #expect(session.durationSeconds >= 620 && session.durationSeconds < 622)
+        #expect(session.workPeriods.count == 2)
+    }
+
+    @Test func latestActivityPreventsRevivingOlderPauseAfterEarlierSessionFinishes() throws {
+        let sut = makeSUT()
+        let project = Project(name: "Recência", client: "C", dailyRate: 0, category: .work)
+        try sut.projectRepository.insert(project)
+        let now = Date.now
+        let olderPause = Session(project: project, date: now, startTime: now.addingTimeInterval(-1000),
+                                 endTime: now.addingTimeInterval(-900), durationSeconds: 100,
+                                 category: .work, status: .paused)
+        let completed = Session(project: project, date: now, startTime: now.addingTimeInterval(-2000),
+                                endTime: now.addingTimeInterval(-10), durationSeconds: 200,
+                                category: .work, status: .completed)
+        completed.workPeriods = [
+            SessionWorkPeriod(start: now.addingTimeInterval(-2000), end: now.addingTimeInterval(-1900)),
+            SessionWorkPeriod(start: now.addingTimeInterval(-110), end: now.addingTimeInterval(-10))
+        ]
+        try sut.sessionRepository.insert(olderPause)
+        try sut.sessionRepository.insert(completed)
+        olderPause.note = "Editar a nota não é trabalhar de novo"
+        try sut.sessionRepository.update(olderPause)
+
+        #expect(try sut.timerService.resumableSession(for: nil) == nil)
+        #expect(try sut.timerService.resumableSession(for: project) == nil)
+        try sut.timerService.resume(project: project)
+        #expect(!sut.timerService.isRunning)
+        #expect(try sut.sessionRepository.fetchAll(for: project).count == 2)
+    }
+
+    @Test func workPeriodsLegacyFallbackDoesNotMutateAndIncludesZeroDurationRange() {
+        let start = Date.now.addingTimeInterval(-1000)
+        let session = Session(project: nil, date: start, startTime: start,
+                              endTime: start.addingTimeInterval(600), category: .work, status: .completed)
+        #expect(session.workPeriods == [SessionWorkPeriod(start: start, end: start.addingTimeInterval(600))])
+        #expect(session.workPeriodsData == nil)
+        #expect(session.durationSeconds == 0)
+    }
+
+    @Test func legacyPositiveDurationSurvivesResumingInconsistentRange() throws {
+        let sut = makeSUT()
+        let project = Project(name: "Legado", client: "C", dailyRate: 0, category: .work)
+        try sut.projectRepository.insert(project)
+        let start = Date.now.addingTimeInterval(-7200)
+        let session = Session(project: project, date: start, startTime: start,
+                              endTime: start.addingTimeInterval(600), durationSeconds: 50,
+                              category: .work, status: .paused)
+        try sut.sessionRepository.insert(session)
+
+        try sut.timerService.resume()
+        #expect(session.startTime == start)
+        #expect(session.durationSeconds == 50)
+        #expect(sut.timerService.elapsed >= 50 && sut.timerService.elapsed < 52)
+        try sut.timerService.stop()
+
+        #expect(session.durationSeconds >= 50 && session.durationSeconds < 52)
+        #expect(try sut.sessionRepository.fetchAll(for: project).count == 1)
+    }
+
+    @Test func workPeriodsEncodeAndClipAcrossDaysWithoutPauseTime() throws {
+        let start = Date(timeIntervalSince1970: 1_000_000)
+        let session = Session(project: nil, date: start, startTime: start,
+                              durationSeconds: 600, category: .work, status: .running)
+        let periods = [SessionWorkPeriod(start: start, end: start.addingTimeInterval(600)),
+                       SessionWorkPeriod(start: start.addingTimeInterval(7200), end: nil)]
+        session.workPeriods = periods
+        #expect(try JSONDecoder().decode([SessionWorkPeriod].self, from: #require(session.workPeriodsData)) == periods)
+        #expect(session.elapsedDuration(at: start.addingTimeInterval(7260)) == 660)
+        #expect(session.workedDuration(in: DateInterval(start: start.addingTimeInterval(300),
+                                                       end: start.addingTimeInterval(7230)),
+                                       asOf: start.addingTimeInterval(7260)) == 330)
+        #expect(session.latestActivity == start.addingTimeInterval(7200))
     }
 
     @Test func manualSessionRejectsInvalidRange() throws {

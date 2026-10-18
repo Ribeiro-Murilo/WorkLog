@@ -121,8 +121,13 @@ final class ReportsViewModel {
         }
     }
 
-    var totalValue: Decimal {
-        sessions.reduce(Decimal(0)) { $0 + $1.estimatedValue }
+    var totalDuration: TimeInterval { detailedRows.reduce(0) { $0 + $1.durationSeconds } }
+
+    var totalValue: Decimal { detailedRows.reduce(Decimal(0)) { $0 + $1.estimatedValue } }
+
+    private var detailedRows: [ReportRow] {
+        let interval = period.dateInterval(customStart: customStart, customEnd: customEnd)
+        return sessions.flatMap { $0.recordedReportRows(in: interval) }
     }
 
     // MARK: - Colunas
@@ -146,7 +151,7 @@ final class ReportsViewModel {
     func reportRows() -> [ReportRow] {
         switch grouping {
         case .detailed:
-            return sessions.map(ReportRow.init(session:))
+            return detailedRows
         case .byProjectAndDay:
             return groupedByProjectAndDay()
         }
@@ -154,45 +159,30 @@ final class ReportsViewModel {
 
     private func groupedByProjectAndDay() -> [ReportRow] {
         let calendar = Calendar.current
-        // Agrupa por (projeto, dia) preservando a ordem de aparição.
         var order: [String] = []
-        var buckets: [String: [Session]] = [:]
-
-        for session in sessions {
-            let day = calendar.startOfDay(for: session.date)
-            let projectKey = session.project?.id.uuidString ?? "—"
-            let key = "\(projectKey)#\(day.timeIntervalSinceReferenceDate)"
-            if buckets[key] == nil {
-                buckets[key] = []
-                order.append(key)
-            }
-            buckets[key]?.append(session)
+        var buckets: [String: [ReportRow]] = [:]
+        // As linhas derivadas podem ser vários trechos da mesma sessão no mesmo dia.
+        let projectIDs = Dictionary(uniqueKeysWithValues: sessions.map { ($0.id.uuidString, $0.project?.id.uuidString ?? "—") })
+        for row in detailedRows {
+            let sessionID = String(row.id.split(separator: "#")[0])
+            let day = calendar.startOfDay(for: row.date)
+            let key = "\(projectIDs[sessionID] ?? "—")#\(day.timeIntervalSinceReferenceDate)"
+            if buckets[key] == nil { buckets[key] = []; order.append(key) }
+            buckets[key]?.append(row)
         }
-
         return order.compactMap { key -> ReportRow? in
             guard let group = buckets[key], let first = group.first else { return nil }
-            let totalDuration = group.reduce(0) { $0 + $1.durationSeconds }
-            let totalValue = group.reduce(Decimal(0)) { $0 + $1.estimatedValue }
-            let earliestStart = group.map(\.startTime).min() ?? first.startTime
-            let latestEnd = group.compactMap(\.endTime).max()
-            let notes = group.map(\.note).filter { !$0.isEmpty }.joined(separator: " | ")
-
-            return ReportRow(
-                id: key,
-                projectName: first.project?.name ?? "—",
-                client: first.project?.client ?? "—",
-                date: calendar.startOfDay(for: first.date),
-                startTime: earliestStart,
-                endTime: latestEnd,
-                durationSeconds: totalDuration,
-                category: first.category,
-                status: first.status,
-                estimatedValue: totalValue,
-                note: notes,
-                tags: first.project?.tags ?? [],
-                descriptionText: first.project?.descriptionText ?? "",
-                sessionCount: group.count
-            )
+            let sessionIDs = Set(group.map { String($0.id.split(separator: "#")[0]) })
+            var seenNotes = Set<String>()
+            let notes = group.filter { seenNotes.insert(String($0.id.split(separator: "#")[0])).inserted }
+                .map(\.note).filter { !$0.isEmpty }.joined(separator: " | ")
+            return ReportRow(id: key, projectName: first.projectName, client: first.client,
+                date: first.date, startTime: group.map(\.startTime).min() ?? first.startTime,
+                endTime: group.compactMap(\.endTime).max(),
+                durationSeconds: group.reduce(0) { $0 + $1.durationSeconds },
+                category: first.category, status: first.status,
+                estimatedValue: group.reduce(Decimal(0)) { $0 + $1.estimatedValue }, note: notes,
+                tags: first.tags, descriptionText: first.descriptionText, sessionCount: sessionIDs.count)
         }
     }
 

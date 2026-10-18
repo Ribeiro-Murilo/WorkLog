@@ -64,7 +64,7 @@ final class MenuBarViewModel {
             let calendar = Calendar.current
             let dayInterval = calendar.dateInterval(of: .day, for: .now) ?? DateInterval(start: .now, end: .now)
             let todaySessions = try sessionRepository.fetchSessions(in: dayInterval)
-            todayTotal = todaySessions.reduce(0) { $0 + $1.durationSeconds }
+            todayTotal = todaySessions.reduce(0) { $0 + $1.recordedDuration(in: dayInterval) }
         } catch {
             errorMessage = error.localizedDescription
         }

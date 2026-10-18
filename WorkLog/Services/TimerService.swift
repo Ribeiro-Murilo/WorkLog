@@ -54,20 +54,22 @@ final class TimerService: TimerServiceProtocol {
         guard let session = try? sessionRepository.fetchActiveSession() else { return }
         activeSession = session
         activeProject = session.project
-        elapsed = Date.now.timeIntervalSince(session.startTime)
+        elapsed = session.elapsedDuration()
         startTicking()
     }
 
     func start(project: Project) throws {
         try closeCurrentRunningSession(status: .paused)
 
+        let now = Date.now
         let session = Session(
             project: project,
-            date: .now,
-            startTime: .now,
+            date: now,
+            startTime: now,
             category: project.category,
             status: .running
         )
+        session.workPeriods = [SessionWorkPeriod(start: now, end: nil)]
         try sessionRepository.insert(session)
 
         activeSession = session
@@ -91,10 +93,10 @@ final class TimerService: TimerServiceProtocol {
         if let project {
             guard let persistedProject = try projectRepository.fetch(by: project.id),
                   !persistedProject.isArchived else { return nil }
-            latest = try sessionRepository.fetchAll(for: persistedProject).first
+            latest = try sessionRepository.fetchAll(for: persistedProject).max { $0.latestActivity < $1.latestActivity }
         } else {
             guard !isRunning, try sessionRepository.fetchActiveSession() == nil else { return nil }
-            latest = try sessionRepository.fetchRecent(limit: 1).first
+            latest = try sessionRepository.fetchAll(for: nil).max { $0.latestActivity < $1.latestActivity }
         }
         guard let latest, latest.status == .paused, latest.endTime != nil,
               let projectID = latest.project?.id,
@@ -104,17 +106,33 @@ final class TimerService: TimerServiceProtocol {
     }
 
     func resume() throws {
-        guard let session = try resumableSession(for: nil), let project = session.project else { return }
-        try start(project: project)
+        guard let session = try resumableSession(for: nil) else { return }
+        try resume(session: session)
     }
 
     func resume(project: Project) throws {
-        guard let session = try resumableSession(for: project), let project = session.project else { return }
-        // Um intervalo iniciado por outra superfície precisa ser fechado antes da troca.
-        // O comando contextual preserva a mesma auto-pausa de Iniciar.
-        activeSession = try sessionRepository.fetchActiveSession()
-        activeProject = activeSession?.project
-        try start(project: project)
+        guard let session = try resumableSession(for: project) else { return }
+        try resume(session: session)
+    }
+
+    private func resume(session: Session) throws {
+        // Materializa o legado antes de remover seu fechamento, preservando a duração.
+        var periods = session.workPeriods
+        let accumulated = periods.reduce(0) { total, period in
+            total + max(0, (period.end ?? period.start).timeIntervalSince(period.start))
+        }
+        try closeCurrentRunningSession(status: .paused)
+        let now = Date.now
+        periods.append(SessionWorkPeriod(start: now, end: nil))
+        session.workPeriods = periods
+        session.durationSeconds = accumulated
+        session.endTime = nil
+        session.status = .running
+        try sessionRepository.update(session)
+        activeSession = session
+        activeProject = session.project
+        elapsed = session.elapsedDuration(at: now)
+        startTicking()
     }
 
     func stop() throws {
@@ -141,10 +159,18 @@ final class TimerService: TimerServiceProtocol {
     }
 
     private func closeCurrentRunningSession(status: SessionStatus) throws {
-        guard let session = activeSession else { return }
+        guard let session = try sessionRepository.fetchActiveSession() ?? activeSession,
+              session.status == .running else { return }
         let now = Date.now
+        var periods = session.workPeriods
+        for index in periods.indices where periods[index].end == nil {
+            periods[index].end = max(now, periods[index].start)
+        }
+        session.workPeriods = periods
         session.endTime = now
-        session.durationSeconds = now.timeIntervalSince(session.startTime)
+        session.durationSeconds = periods.reduce(0) { total, period in
+            total + max(0, (period.end ?? period.start).timeIntervalSince(period.start))
+        }
         session.status = status
         try sessionRepository.update(session)
         activeSession = nil
@@ -157,7 +183,7 @@ final class TimerService: TimerServiceProtocol {
         tickTask = Task { [weak self] in
             while !Task.isCancelled {
                 guard let self, let session = self.activeSession else { return }
-                self.elapsed = Date.now.timeIntervalSince(session.startTime)
+                self.elapsed = session.elapsedDuration()
                 try? await Task.sleep(for: .seconds(1))
             }
         }

@@ -7,6 +7,98 @@ import Testing
 struct FolderSyncServiceTests {
     private let key = SyncRecordKey(entity: .project, id: UUID().uuidString)
 
+    @Test func resumingSyncedPausedSessionDoesNotPublishDeletionOrOpenWorkPeriod() async throws {
+        let fixture = try SyncServiceFixture()
+        defer { fixture.cleanUp() }
+        let context = try emptyConflictContext()
+        let project = Project(name: "Resume sync", client: "", dailyRate: 0, category: .work)
+        let start = Date.now.addingTimeInterval(-60)
+        let session = Session(project: project, date: start, startTime: start, endTime: start.addingTimeInterval(40), durationSeconds: 40, category: .work, status: .paused)
+        context.insert(project)
+        context.insert(session)
+        try context.save()
+        let sessionKey = SyncRecordKey(entity: .session, id: session.id.uuidString)
+        let timer = TimerService(sessionRepository: SessionRepository(modelContext: context), projectRepository: ProjectRepository(modelContext: context), idleDetectionService: IdleDetectionService(idleThresholdMinutes: 10))
+        let store = SwiftDataSyncRecordStore(modelContext: context)
+        let service = FolderSyncService(recordStore: store, userDefaults: fixture.makeDefaults())
+        try service.chooseFolder(fixture.folder)
+        await service.synchronize()
+        let initial = try #require(try store.loadState(scope: fixture.folder.standardizedFileURL.path))
+        let initialSessionOperations = initial.operations.filter { $0.key == sessionKey }
+        #expect(initialSessionOperations.count == 1)
+
+        try timer.resume(project: project)
+        await service.synchronize()
+        await service.synchronize()
+
+        #expect(service.errorMessage == nil)
+        #expect(timer.activeSession?.id == session.id)
+        #expect(session.status == .running)
+        #expect(session.workPeriods.count == 2)
+        let runningState = try #require(try store.loadState(scope: fixture.folder.standardizedFileURL.path))
+        #expect(runningState.operations.filter { $0.key == sessionKey } == initialSessionOperations)
+        #expect(runningState.baseline[sessionKey] == initial.baseline[sessionKey])
+        #expect(try context.fetch(FetchDescriptor<Session>()).count == 1)
+
+        try timer.pause()
+        await service.synchronize()
+
+        #expect(service.errorMessage == nil)
+        let pausedState = try #require(try store.loadState(scope: fixture.folder.standardizedFileURL.path))
+        let operations = pausedState.operations.filter { $0.key == sessionKey }
+        #expect(operations.count == 2)
+        #expect(operations.allSatisfy { $0.payload != nil })
+        let latest = try #require(operations.last?.payload)
+        let payload = try SyncPayloadCodec.decode(SessionSyncPayload.self, from: latest)
+        #expect(try context.fetch(FetchDescriptor<Session>()).count == 1)
+        #expect(payload.projectId == project.id)
+        // Keep this decoded inspection detached from the persisted relationship.
+        let restored = payload.materialize(existing: nil, project: nil)
+        #expect(restored.id == session.id)
+        #expect(restored.workPeriods.count == 2)
+        #expect(restored.workPeriods.allSatisfy { $0.end != nil })
+        #expect(restored.durationSeconds >= 40)
+        #expect(restored.status == .paused)
+        #expect(try context.fetch(FetchDescriptor<Session>()).count == 1)
+    }
+
+    @Test func synchronizedSessionKeepsWorkPeriodsAfterImportAndLocalEdit() async throws {
+        let fixture = try SyncServiceFixture()
+        defer { fixture.cleanUp() }
+        let context = try emptyConflictContext()
+        let store = SwiftDataSyncRecordStore(modelContext: context)
+        let service = FolderSyncService(recordStore: store, userDefaults: fixture.makeDefaults())
+        try service.chooseFolder(fixture.folder)
+        let start = Date(timeIntervalSinceReferenceDate: 100)
+        let remote = Session(project: nil, date: start, startTime: start, endTime: start.addingTimeInterval(50), durationSeconds: 30, category: .work, status: .paused)
+        remote.workPeriods = [
+            SessionWorkPeriod(start: start, end: start.addingTimeInterval(10)),
+            SessionWorkPeriod(start: start.addingTimeInterval(30), end: start.addingTimeInterval(50))
+        ]
+        let key = SyncRecordKey(entity: .session, id: remote.id.uuidString)
+        let operation = SyncOperation(deviceID: UUID(), key: key, payload: try SyncPayloadCodec.encode(SessionSyncPayload(remote)))
+        let files = FolderSyncFileStore(folder: fixture.folder)
+        try await files.publish(operation)
+        await service.synchronize()
+
+        #expect(service.errorMessage == nil)
+        let session = try #require(context.fetch(FetchDescriptor<Session>()).first)
+        #expect(session.id == remote.id)
+        #expect(session.workPeriods == remote.workPeriods)
+        session.note = "Edited after sync"
+        try context.save()
+        await service.synchronize()
+
+        #expect(service.errorMessage == nil)
+        #expect(try context.fetch(FetchDescriptor<Session>()).count == 1)
+        let snapshot = try #require(store.snapshot()[key])
+        let payload = try SyncPayloadCodec.decode(SessionSyncPayload.self, from: snapshot)
+        let restored = payload.materialize(existing: nil, project: nil)
+        #expect(restored.workPeriods == remote.workPeriods)
+        #expect(restored.durationSeconds == 30)
+        #expect(restored.note == "Edited after sync")
+    }
+
     @Test func deferredRelationshipCannotBeImplicitlyOverwrittenOrFalselyResolved() async throws {
         let fixture = try SyncServiceFixture()
         defer { fixture.cleanUp() }

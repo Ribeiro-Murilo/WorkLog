@@ -223,7 +223,7 @@ struct ReportsView: View {
 
     private func footer(_ viewModel: ReportsViewModel) -> some View {
         HStack {
-            let total = viewModel.sessions.reduce(0) { $0 + $1.durationSeconds }
+            let total = viewModel.totalDuration
             Text("Total: \(total.formattedClock(showSeconds: false))")
                 .font(.headline)
                 .monospacedDigit()

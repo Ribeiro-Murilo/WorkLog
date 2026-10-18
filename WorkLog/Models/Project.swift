@@ -25,18 +25,20 @@ final class Project {
     /// Jornada padrão (em horas) usada para converter "Valor por dia" em valor por sessão.
     static let standardWorkdayHours: Double = 8
 
-    /// Valor total já acumulado no projeto, calculado a partir das sessões encerradas ou pausadas.
+    /// Valor fechado acumulado, inclusive dos trechos anteriores de um timer retomado.
     var totalValue: Decimal {
-        (sessions ?? [])
-            .filter { $0.status != .running }
-            .reduce(Decimal(0)) { $0 + $1.estimatedValue }
+        (sessions ?? []).reduce(Decimal(0)) { total, session in
+            guard session.status == .running else { return total + session.estimatedValue }
+            guard dailyRate > 0 else { return total }
+            return total + dailyRate * Decimal(session.recordedDuration() / 3600 / Self.standardWorkdayHours)
+        }
     }
 
-    /// Tempo total já trabalhado no projeto (sessões encerradas ou pausadas).
+    /// Trechos fechados continuam no total durante a execução da mesma sessão.
     var totalWorkedSeconds: TimeInterval {
-        (sessions ?? [])
-            .filter { $0.status != .running }
-            .reduce(0) { $0 + $1.durationSeconds }
+        (sessions ?? []).reduce(0) { total, session in
+            total + (session.status == .running ? session.recordedDuration() : session.durationSeconds)
+        }
     }
 
     init(

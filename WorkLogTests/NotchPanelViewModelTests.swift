@@ -86,7 +86,7 @@ struct NotchPanelViewModelTests {
         #expect(sut.model.visibleProjects.map(\.id) == [available.id])
     }
 
-    @Test func pauseResumeAndStopUseTimerServiceAndCreateNewInterval() throws {
+    @Test func pauseResumeAndStopUseSameSession() throws {
         let sut = makeFixture()
         let project = project("WorkLog")
         try sut.projects.insert(project)
@@ -100,7 +100,8 @@ struct NotchPanelViewModelTests {
 
         sut.model.resume()
         #expect(sut.model.state == .running)
-        #expect(sut.timer.activeSession?.id != originalID)
+        #expect(sut.timer.activeSession?.id == originalID)
+        #expect(try sut.sessions.fetchAll(for: nil).count == 1)
         let running = try sut.sessions.fetchAll(for: nil).filter { $0.status == .running }
         #expect(running.count == 1)
         sut.model.stop()
@@ -169,6 +170,25 @@ struct NotchPanelViewModelTests {
         sut.model.resume()
         #expect(!sut.timer.isRunning)
         #expect(sut.model.state == .idle)
+    }
+
+    @Test func resumeRefreshesAnotherSessionOfSameProjectBeforeResumingIt() throws {
+        let sut = makeFixture()
+        let project = project("Projeto")
+        try sut.projects.insert(project)
+        sut.model.start(project: project)
+        sut.model.pause()
+        let originalID = try #require(sut.timer.resumableSession(for: nil)?.id)
+        let newSession = Session(project: project, date: .now, startTime: .now,
+            endTime: .now, durationSeconds: 60, category: .work, status: .paused)
+        try sut.sessions.insert(newSession)
+        sut.model.resume()
+        #expect(!sut.timer.isRunning)
+        #expect(try sut.timer.resumableSession(for: nil)?.id == newSession.id)
+        #expect(newSession.id != originalID)
+        sut.model.resume()
+        #expect(sut.timer.activeSession?.id == newSession.id)
+        sut.model.stop()
     }
 
     @Test func secondsPreferenceUpdatesWithoutReopeningPinnedPanel() throws {

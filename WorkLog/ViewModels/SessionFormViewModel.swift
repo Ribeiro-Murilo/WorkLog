@@ -33,6 +33,12 @@ final class SessionFormViewModel {
     private(set) var editingSession: Session?
 
     var isEditing: Bool { editingSession != nil }
+    var isTimeEditingLocked: Bool { (editingSession?.workPeriods.count ?? 0) > 1 || editingSession?.status == .running }
+    var timeEditingExplanation: String? {
+        guard isTimeEditingLocked else { return nil }
+        if editingSession?.status == .running { return "Pause ou encerre o timer antes de editar esta sessão." }
+        return "Esta sessão possui vários trechos de trabalho. Os horários são preservados para manter as pausas; você pode editar a observação."
+    }
 
     init(
         project: Project,
@@ -86,18 +92,14 @@ final class SessionFormViewModel {
         suggestedInterval = nil
         availabilityError = nil
         errorMessage = nil
-        guard endTime > startTime else { return }
+        guard !isTimeEditingLocked, endTime > startTime else { return }
         do {
             conflictingSessions = try sessionRepository.conflictingSessions(
                 start: startTime, end: endTime, excluding: editingSession?.id)
             guard !conflictingSessions.isEmpty else { return }
             let occupied = try sessionRepository.fetchAll(for: nil)
                 .filter { $0.id != editingSession?.id }
-                .compactMap { session -> DateInterval? in
-                    let end = session.endTime ?? .distantFuture
-                    guard end > session.startTime else { return nil }
-                    return DateInterval(start: session.startTime, end: end)
-                }
+                .flatMap(\.occupiedWorkIntervals)
             suggestedInterval = SessionAvailability.nearestInterval(
                 start: startTime, end: endTime, occupied: occupied, calendar: calendar)
         } catch {
@@ -118,6 +120,17 @@ final class SessionFormViewModel {
     @discardableResult
     func save() -> Bool {
         do {
+            if let session = editingSession {
+                guard session.status != .running else {
+                    errorMessage = "Pause ou encerre o timer antes de editar esta sessão."
+                    return false
+                }
+                if session.workPeriods.count > 1 {
+                    session.note = note
+                    try sessionRepository.update(session)
+                    return true
+                }
+            }
             try validationService.validateSessionFields(project: project, startTime: startTime, endTime: endTime)
             refreshAvailability()
             let hasOverlap = try sessionRepository.hasOverlap(start: startTime, end: endTime, excluding: editingSession?.id)
@@ -128,6 +141,9 @@ final class SessionFormViewModel {
                 session.startTime = startTime
                 session.endTime = endTime
                 session.durationSeconds = endTime.timeIntervalSince(startTime)
+                if session.workPeriodsData != nil {
+                    session.workPeriods = [.init(start: startTime, end: endTime)]
+                }
                 session.note = note
                 try sessionRepository.update(session)
             } else {

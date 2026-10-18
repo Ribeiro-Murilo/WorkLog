@@ -32,9 +32,8 @@ final class DashboardViewModel {
             activeProjectsCount = allProjects.filter { !$0.isArchived }.count
             archivedProjectsCount = allProjects.filter { $0.isArchived }.count
 
-            let closedStatuses: Set<SessionStatus> = [.completed, .paused]
-            let allSessions = try sessionRepository.fetchAll(for: nil).filter { closedStatuses.contains($0.status) }
-            allTimeTotal = allSessions.reduce(0) { $0 + $1.durationSeconds }
+            let allSessions = try sessionRepository.fetchAll(for: nil)
+            allTimeTotal = allSessions.reduce(0) { $0 + $1.recordedDuration() }
 
             let calendar = Calendar.current
             let now = Date.now
@@ -42,9 +41,9 @@ final class DashboardViewModel {
             let weekInterval = calendar.dateInterval(of: .weekOfYear, for: now) ?? dayInterval
             let monthInterval = calendar.dateInterval(of: .month, for: now) ?? dayInterval
 
-            todayTotal = allSessions.filter { dayInterval.contains($0.startTime) }.reduce(0) { $0 + $1.durationSeconds }
-            weekTotal = allSessions.filter { weekInterval.contains($0.startTime) }.reduce(0) { $0 + $1.durationSeconds }
-            monthTotal = allSessions.filter { monthInterval.contains($0.startTime) }.reduce(0) { $0 + $1.durationSeconds }
+            todayTotal = allSessions.reduce(0) { $0 + $1.recordedDuration(in: dayInterval) }
+            weekTotal = allSessions.reduce(0) { $0 + $1.recordedDuration(in: weekInterval) }
+            monthTotal = allSessions.reduce(0) { $0 + $1.recordedDuration(in: monthInterval) }
 
             recentSessions = try sessionRepository.fetchRecent(limit: 10)
 
@@ -52,7 +51,7 @@ final class DashboardViewModel {
             var usage: [(project: Project, total: TimeInterval)] = []
             for (_, sessions) in projectGroups {
                 guard let project = sessions.first?.project else { continue }
-                usage.append((project, sessions.reduce(0) { $0 + $1.durationSeconds }))
+                usage.append((project, sessions.reduce(0) { $0 + $1.recordedDuration() }))
             }
             usage.sort { $0.total > $1.total }
             mostUsedProjects = usage
@@ -60,12 +59,12 @@ final class DashboardViewModel {
 
             let categoryGroups = Dictionary(grouping: allSessions, by: { $0.category })
             timeByCategory = categoryGroups
-                .map { (category: $0.key, total: $0.value.reduce(0) { $0 + $1.durationSeconds }) }
+                .map { (category: $0.key, total: $0.value.reduce(0) { $0 + $1.recordedDuration() }) }
                 .sorted { $0.total > $1.total }
 
             let clientGroups = Dictionary(grouping: allSessions, by: { $0.project?.client ?? "—" })
             timeByClient = clientGroups
-                .map { (client: $0.key, total: $0.value.reduce(0) { $0 + $1.durationSeconds }) }
+                .map { (client: $0.key, total: $0.value.reduce(0) { $0 + $1.recordedDuration() }) }
                 .sorted { $0.total > $1.total }
         } catch {
             errorMessage = error.localizedDescription

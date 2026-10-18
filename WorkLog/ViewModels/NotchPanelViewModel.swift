@@ -70,8 +70,7 @@ final class NotchPanelViewModel {
             recentProjectIDs = sessions.compactMap { $0.project?.id }
             pausedSession = try timerService.resumableSession(for: nil)
             self.settings = settings
-            todayTotal = todaySessions.filter { $0.status != .running && $0.endTime != nil }
-                .reduce(0) { $0 + $1.durationSeconds }
+            todayTotal = todaySessions.reduce(0) { $0 + $1.recordedDuration(in: day) }
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
@@ -83,12 +82,12 @@ final class NotchPanelViewModel {
     func stop() { perform { try timerService.stop() } }
     func resume() {
         guard !isRunning else { return }
-        let displayedProjectID = resumableSession?.project?.id
+        let displayedSessionID = resumableSession?.id
         // Dashboard e registros manuais podem mudar o último intervalo enquanto
-        // o painel está fixado. Não retomar um projeto arquivado ou outro projeto.
+        // o painel está fixado. Atualize a sessão exibida antes de retomar outra sessão.
         reload()
         guard errorMessage == nil, let resumableSession,
-              resumableSession.project?.id == displayedProjectID else { return }
+              resumableSession.id == displayedSessionID else { return }
         perform { try timerService.resume() }
     }
 

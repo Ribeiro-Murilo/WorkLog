@@ -40,6 +40,11 @@ struct SyncRecordStoreTests {
         let expectedDate = project.createdAt
         context.insert(project)
         let closed = Session(project: project, date: project.createdAt, startTime: project.createdAt, endTime: project.createdAt.addingTimeInterval(10), durationSeconds: 10, note: "note", category: .personal, status: .paused)
+        closed.workPeriods = [
+            SessionWorkPeriod(start: project.createdAt, end: project.createdAt.addingTimeInterval(4)),
+            SessionWorkPeriod(start: project.createdAt.addingTimeInterval(8), end: project.createdAt.addingTimeInterval(14))
+        ]
+        closed.endTime = project.createdAt.addingTimeInterval(14)
         context.insert(closed)
         context.insert(Session(project: project, date: .now, startTime: .now, category: .work))
         context.insert(WorkLog.Comment(text: "comment", author: "author", project: project))
@@ -71,6 +76,7 @@ struct SyncRecordStoreTests {
         try receiverStore.apply(original.map { SyncRecordChange(key: $0.key, payload: $0.value) })
         try receiverStore.saveState(FolderSyncState(), scope: "roundtrip")
         #expect(try receiverStore.snapshot() == original)
+        #expect(try receiver.fetch(FetchDescriptor<Session>()).first?.workPeriods == closed.workPeriods)
         #expect(receiverSettings.launchAtLogin)
         #expect(receiverSettings.idleTimeoutMinutes == 37)
         #expect(receiverSettings.includeLogoInPDF == false)
@@ -85,6 +91,21 @@ struct SyncRecordStoreTests {
         #expect(project.name == "Edited on second bank")
         #expect(try context.fetch(FetchDescriptor<Session>()).filter { $0.status == .running }.count == 1)
         #expect(settings.launchAtLogin == false && settings.includeLogoInPDF)
+    }
+
+    @Test func sessionPayloadWithoutWorkPeriodsDecodesAsLegacySession() throws {
+        let start = Date(timeIntervalSinceReferenceDate: 100)
+        let original = Session(project: nil, date: start, startTime: start, endTime: start.addingTimeInterval(20), durationSeconds: 20, category: .work, status: .paused)
+        var object = try #require(JSONSerialization.jsonObject(with: SyncPayloadCodec.encode(SessionSyncPayload(original))) as? [String: Any])
+        object.removeValue(forKey: "workPeriodsData")
+        let payload = try SyncPayloadCodec.decode(SessionSyncPayload.self, from: JSONSerialization.data(withJSONObject: object))
+        let restored = payload.materialize(existing: nil, project: nil)
+
+        #expect(restored.id == original.id)
+        #expect(restored.workPeriodsData == nil)
+        #expect(restored.workPeriods == [SessionWorkPeriod(start: start, end: start.addingTimeInterval(20))])
+        #expect(restored.durationSeconds == 20)
+        #expect(restored.status == .paused)
     }
 
     @Test func incomingMissingParentRollsBackWholeBatchAndCheckpoint() throws {

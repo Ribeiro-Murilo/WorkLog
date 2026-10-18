@@ -239,3 +239,171 @@ struct SessionConflictRenderingTests {
         }
     }
 }
+
+
+@MainActor
+struct ResumedSessionIntegrationTests {
+    private var calendar: Calendar {
+        var value = Calendar(identifier: .gregorian)
+        value.timeZone = TimeZone(secondsFromGMT: 0)!
+        return value
+    }
+    private func time(_ hour: Int, day: Int = 17) -> Date {
+        calendar.date(from: DateComponents(year: 2026, month: 10, day: day, hour: hour))!
+    }
+    private func resumed(project: Project, status: SessionStatus = .paused) -> Session {
+        let session = Session(project: project, date: time(0), startTime: time(9),
+            endTime: time(13), durationSeconds: 7200, category: .work, status: status)
+        session.workPeriods = [.init(start: time(9), end: time(10)), .init(start: time(12), end: time(13))]
+        return session
+    }
+
+    @Test func resumedSessionLeavesPauseFreeAndFindsLaterWorkAcrossDays() throws {
+        let repository = SessionRepository(modelContext: makeInMemoryContext())
+        let project = Project(name: "P", client: "C", dailyRate: 800, category: .work)
+        let session = resumed(project: project)
+        session.workPeriods = [.init(start: time(9), end: time(10)), .init(start: time(12, day: 18), end: time(13, day: 18))]
+        session.endTime = time(13, day: 18)
+        try repository.insert(session)
+        #expect(try !repository.hasOverlap(start: time(10), end: time(12, day: 18), excluding: nil))
+        #expect(try repository.hasOverlap(start: time(12, day: 18), end: time(13, day: 18), excluding: nil))
+        #expect(try repository.fetchSessions(in: DateInterval(start: time(0, day: 18), end: time(0, day: 19))).map(\.id) == [session.id])
+        #expect(try repository.fetchSessions(in: DateInterval(start: time(10), end: time(12))).isEmpty)
+    }
+
+    @Test func suggestionUsesGapBetweenPeriodsAndOpenPeriodBlocksFuture() throws {
+        let repository = SessionRepository(modelContext: makeInMemoryContext())
+        let project = Project(name: "P", client: "C", dailyRate: 0, category: .work)
+        let session = resumed(project: project, status: .running)
+        session.endTime = nil
+        session.workPeriods = [.init(start: time(9), end: time(10)), .init(start: time(12), end: nil)]
+        try repository.insert(session)
+        let form = SessionFormViewModel(project: project, sessionRepository: repository, calendar: calendar)
+        form.startTime = time(9)
+        form.endTime = time(10)
+        #expect(form.suggestedInterval == DateInterval(start: time(10), end: time(11)))
+        #expect(try repository.hasOverlap(start: time(20), end: time(21), excluding: nil))
+    }
+
+    @Test func editingMultiPeriodOnlyChangesNoteAndRunningSessionCannotSave() throws {
+        let repository = SessionRepository(modelContext: makeInMemoryContext())
+        let project = Project(name: "P", client: "C", dailyRate: 0, category: .work)
+        let session = resumed(project: project)
+        try repository.insert(session)
+        let originalPeriods = session.workPeriods
+        let form = SessionFormViewModel(project: project, sessionRepository: repository, calendar: calendar, editing: session)
+        #expect(form.isTimeEditingLocked)
+        form.startTime = time(8)
+        form.endTime = time(14)
+        form.note = "Observação corrigida"
+        #expect(form.save())
+        #expect(session.note == "Observação corrigida")
+        #expect(session.startTime == time(9))
+        #expect(session.endTime == time(13))
+        #expect(session.durationSeconds == 7200)
+        #expect(session.workPeriods == originalPeriods)
+        #expect(session.status == .paused)
+        session.status = .running
+        form.note = "Não salvar durante execução"
+        #expect(!form.save())
+        #expect(session.note == "Observação corrigida")
+    }
+
+    @Test func recentSessionsUseLastWorkedPeriodInsteadOfOriginalStart() throws {
+        let repository = SessionRepository(modelContext: makeInMemoryContext())
+        let project = Project(name: "P", client: "C", dailyRate: 0, category: .work)
+        let resumed = resumed(project: project)
+        let other = Session(project: project, date: time(0), startTime: time(11), endTime: time(12), durationSeconds: 3600, category: .work, status: .completed)
+        try repository.insert(resumed)
+        try repository.insert(other)
+        #expect(try repository.fetchRecent(limit: 1).first?.id == resumed.id)
+    }
+
+    @Test func reportsAndBillingClipClosedPeriodsByDayWhileSessionRuns() throws {
+        func localTime(_ hour: Int, day: Int = 17) -> Date {
+            Calendar.current.date(from: DateComponents(year: 2026, month: 10, day: day, hour: hour))!
+        }
+        let context = makeInMemoryContext()
+        let projects = ProjectRepository(modelContext: context)
+        let repository = SessionRepository(modelContext: context)
+        let settings = SettingsRepository(modelContext: context)
+        let project = Project(name: "P", client: "C", dailyRate: 800, category: .work)
+        try projects.insert(project)
+        let session = resumed(project: project, status: .running)
+        session.endTime = nil
+        session.workPeriods = [.init(start: localTime(23), end: localTime(1, day: 18)), .init(start: localTime(4, day: 18), end: localTime(5, day: 18)), .init(start: localTime(7, day: 18), end: nil)]
+        session.durationSeconds = 10800
+        try repository.insert(session)
+        let start = localTime(0, day: 18)
+        let end = localTime(6, day: 18)
+        let reports = ReportsViewModel(sessionRepository: repository, exportService: ExportService())
+        reports.customStart = start
+        reports.customEnd = end
+        reports.period = .custom
+        #expect(reports.sessions.map(\.id) == [session.id])
+        #expect(reports.totalDuration == 7200)
+        #expect(reports.totalValue == 200)
+        #expect(reports.reportRows().reduce(0) { $0 + $1.durationSeconds } == 7200)
+        reports.grouping = .byProjectAndDay
+        #expect(reports.reportRows().count == 1)
+        #expect(reports.reportRows().first?.sessionCount == 1)
+        let billing = BillingViewModel(projectRepository: projects, sessionRepository: repository,
+            invoiceRepository: InvoiceRepository(modelContext: context, settingsRepository: settings), settingsRepository: settings, exportService: ExportService())
+        billing.customStart = start
+        billing.customEnd = end
+        billing.selectedClient = "C"
+        billing.period = .custom
+        #expect(billing.previewLineItems.count == 1)
+        #expect(billing.previewTotalDuration == 7200)
+        #expect(billing.previewTotalValue == 200)
+        #expect(try repository.fetchAll(for: nil).count == 1)
+    }
+
+    @Test func projectTotalsKeepClosedWorkWhenPausedSessionResumes() throws {
+        let context = makeInMemoryContext()
+        let projects = ProjectRepository(modelContext: context)
+        let repository = SessionRepository(modelContext: context)
+        let project = Project(name: "P", client: "C", dailyRate: 2880, category: .work)
+        try projects.insert(project)
+        let end = Date.now.addingTimeInterval(-60)
+        let session = Session(project: project, date: end, startTime: end.addingTimeInterval(-600),
+            endTime: end, durationSeconds: 600, category: .work, status: .paused)
+        try repository.insert(session)
+        let expectedValue = session.estimatedValue
+        #expect(expectedValue > 0)
+        #expect(project.totalWorkedSeconds == 600)
+        #expect(project.totalValue == expectedValue)
+        let timer = TimerService(sessionRepository: repository, projectRepository: projects,
+            idleDetectionService: IdleDetectionService(idleThresholdMinutes: 10))
+        try timer.resume(project: project)
+        #expect(timer.activeSession?.id == session.id)
+        #expect(project.totalWorkedSeconds == 600)
+        #expect(project.totalValue == expectedValue)
+        try timer.stop()
+    }
+
+    @Test func dashboardAndNotchKeepClosedTimeWhileSameSessionRuns() throws {
+        let context = makeInMemoryContext()
+        let projects = ProjectRepository(modelContext: context)
+        let repository = SessionRepository(modelContext: context)
+        let settings = SettingsRepository(modelContext: context)
+        let project = Project(name: "P", client: "C", dailyRate: 0, category: .work)
+        try projects.insert(project)
+        let today = Calendar.current.startOfDay(for: .now)
+        let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: today)!
+        let session = Session(project: project, date: yesterday, startTime: yesterday,
+            durationSeconds: 7200, category: .work, status: .running)
+        session.workPeriods = [.init(start: yesterday, end: yesterday.addingTimeInterval(3600)),
+            .init(start: today, end: today.addingTimeInterval(3600)), .init(start: .now, end: nil)]
+        try repository.insert(session)
+        let dashboard = DashboardViewModel(projectRepository: projects, sessionRepository: repository)
+        #expect(dashboard.todayTotal == 3600)
+        #expect(dashboard.allTimeTotal == 7200)
+        let timer = TimerService(sessionRepository: repository, projectRepository: projects, idleDetectionService: IdleDetectionService(idleThresholdMinutes: 10))
+        let notch = NotchPanelViewModel(timerService: timer, projectRepository: projects, sessionRepository: repository, settingsRepository: settings)
+        #expect(notch.todayTotal == 3600)
+        let menu = MenuBarViewModel(timerService: timer, projectRepository: projects,
+            sessionRepository: repository, settingsRepository: settings)
+        #expect(menu.todayTotal == 3600)
+    }
+}

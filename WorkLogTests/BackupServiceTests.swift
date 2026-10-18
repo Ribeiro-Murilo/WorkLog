@@ -5,6 +5,69 @@ import Testing
 
 @Suite(.serialized) @MainActor
 struct BackupServiceTests {
+    @Test func backupRoundTripsPausedAndRunningWorkPeriodsWithoutAddingSessions() throws {
+        let context = try makeSyncRecordContext()
+        let start = Date(timeIntervalSinceReferenceDate: 100)
+        let paused = Session(project: nil, date: start, startTime: start, endTime: start.addingTimeInterval(50), durationSeconds: 30, note: "preserved", category: .work, status: .paused)
+        paused.workPeriods = [
+            SessionWorkPeriod(start: start, end: start.addingTimeInterval(10)),
+            SessionWorkPeriod(start: start.addingTimeInterval(30), end: start.addingTimeInterval(50))
+        ]
+        let running = Session(project: nil, date: start, startTime: start, durationSeconds: 10, category: .work)
+        running.workPeriods = [
+            SessionWorkPeriod(start: start, end: start.addingTimeInterval(10)),
+            SessionWorkPeriod(start: start.addingTimeInterval(30), end: nil)
+        ]
+        context.insert(paused)
+        context.insert(running)
+        try context.save()
+        let pausedID = paused.id
+        let runningID = running.id
+        let expected = [paused.id: paused.workPeriods, running.id: running.workPeriods]
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".json")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let service = BackupService(modelContext: context)
+        try service.exportBackup(to: url)
+        try context.delete(model: Session.self)
+        try context.save()
+        try service.importBackup(from: url)
+        try service.importBackup(from: url)
+
+        let sessions = try context.fetch(FetchDescriptor<Session>())
+        #expect(sessions.count == 2)
+        #expect(Dictionary(uniqueKeysWithValues: sessions.map { ($0.id, $0.workPeriods) }) == expected)
+        #expect(sessions.first(where: { $0.id == pausedID })?.durationSeconds == 30)
+        #expect(sessions.first(where: { $0.id == pausedID })?.note == "preserved")
+        #expect(sessions.first(where: { $0.id == runningID })?.status == .running)
+    }
+
+    @Test func versionTwoBackupWithoutWorkPeriodsStillImports() throws {
+        let context = try makeSyncRecordContext()
+        let start = Date(timeIntervalSinceReferenceDate: 100)
+        let original = Session(project: nil, date: start, startTime: start, endTime: start.addingTimeInterval(10), durationSeconds: 10, category: .work, status: .completed)
+        let originalID = original.id
+        context.insert(original)
+        try context.save()
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".json")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let service = BackupService(modelContext: context)
+        try service.exportBackup(to: url)
+        var object = try #require(JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any])
+        var sessions = try #require(object["sessions"] as? [[String: Any]])
+        sessions[0].removeValue(forKey: "workPeriodsData")
+        object["sessions"] = sessions
+        try JSONSerialization.data(withJSONObject: object).write(to: url)
+        try context.delete(model: Session.self)
+        try context.save()
+        try service.importBackup(from: url)
+
+        let restored = try #require(context.fetch(FetchDescriptor<Session>()).first)
+        #expect(restored.id == originalID)
+        #expect(restored.workPeriodsData == nil)
+        #expect(restored.workPeriods == [SessionWorkPeriod(start: start, end: start.addingTimeInterval(10))])
+        #expect(restored.durationSeconds == 10)
+    }
+
     @Test func completeBackupRoundTripsAllEntitiesAndPreservesIDsOnRepeatedImport() throws {
         let context = try makeSyncRecordContext()
         let project = Project(name: "All", client: "Client", dailyRate: 123, category: .work)

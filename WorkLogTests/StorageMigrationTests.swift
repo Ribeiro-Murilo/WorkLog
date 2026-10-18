@@ -16,6 +16,39 @@ private let migrationTestContainers: (source: ModelContainer, destination: Model
 
 @MainActor
 struct StorageMigrationTests {
+    @Test(.enabled(if: ProcessInfo.processInfo.environment["WORKLOG_RESUME_MIGRATION_STORE"] != nil))
+    func legacyDiskStoreAddsOptionalWorkPeriodsWithoutChangingExistingRecords() throws {
+        let environment = ProcessInfo.processInfo.environment
+        let path = try #require(environment["WORKLOG_RESUME_MIGRATION_STORE"])
+        let expectedSessions = try #require(environment["WORKLOG_RESUME_MIGRATION_SESSION_COUNT"].flatMap(Int.init))
+        let expectedProjects = try #require(environment["WORKLOG_RESUME_MIGRATION_PROJECT_COUNT"].flatMap(Int.init))
+        let input = URL(fileURLWithPath: path).standardizedFileURL.resolvingSymlinksInPath()
+        let repository = URL(fileURLWithPath: #filePath).resolvingSymlinksInPath().deletingLastPathComponent().deletingLastPathComponent()
+        let allowedDirectory = repository.appendingPathComponent("build/local-test-resume-2026-10-18", isDirectory: true).standardizedFileURL.resolvingSymlinksInPath()
+        // Only consume the isolated, consistent backup prepared for this validation.
+        #expect(input.deletingLastPathComponent() == allowedDirectory)
+        guard input.deletingLastPathComponent() == allowedDirectory else { return }
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("WorkLog-legacy-schema-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let copiedStore = directory.appendingPathComponent("migration.store")
+        let before = try Data(contentsOf: input)
+        try FileManager.default.copyItem(at: input, to: copiedStore)
+        let schema = PersistenceController.schema()
+        let configuration = ModelConfiguration("legacy-session-validation", schema: schema, url: copiedStore, cloudKitDatabase: .none)
+        let container = try ModelContainer(for: schema, configurations: [configuration])
+        let context = ModelContext(container)
+        let sessions = try context.fetch(FetchDescriptor<Session>())
+        let projects = try context.fetch(FetchDescriptor<Project>())
+
+        #expect(sessions.count == expectedSessions)
+        #expect(projects.count == expectedProjects)
+        #expect(Set(sessions.map(\.id)).count == expectedSessions)
+        #expect(sessions.allSatisfy { $0.workPeriodsData == nil })
+        #expect(sessions.allSatisfy { $0.workPeriods.count == 1 && $0.workPeriods.first?.start == $0.startTime })
+        #expect(try Data(contentsOf: input) == before)
+    }
+
     @Test func copiesAllEntitiesAndRelationships() throws {
         let (source, destination) = freshContexts()
         let project = Project(
@@ -41,6 +74,11 @@ struct StorageMigrationTests {
             status: .completed
         )
         session.id = UUID()
+        session.workPeriods = [
+            SessionWorkPeriod(start: session.startTime, end: session.startTime.addingTimeInterval(1200)),
+            SessionWorkPeriod(start: session.startTime.addingTimeInterval(1800), end: session.startTime.addingTimeInterval(3600))
+        ]
+        session.durationSeconds = 3000
 
         let comment = WorkLog.Comment(text: "Comentário preservado", author: "Murilo", project: project)
         comment.id = UUID()
@@ -107,6 +145,9 @@ struct StorageMigrationTests {
         #expect(copiedProject?.isFavorite == true)
         #expect(copiedSession?.id == session.id)
         #expect(copiedSession?.project?.id == project.id)
+        #expect(copiedSession?.workPeriodsData == session.workPeriodsData)
+        #expect(copiedSession?.workPeriods == session.workPeriods)
+        #expect(copiedSession?.durationSeconds == 3000)
         #expect(copiedComment?.id == comment.id)
         #expect(copiedComment?.project?.id == project.id)
         #expect(copiedSettings?.displayMode == .notch)
@@ -118,6 +159,41 @@ struct StorageMigrationTests {
         #expect(copiedInvoice?.id == invoice.id)
         #expect(copiedInvoice?.lineItems == invoice.lineItems)
         #expect(defaults.bool(forKey: LegacyStorageMigrator.completionKey))
+    }
+
+    @Test func workPeriodsSurviveClosingAndReopeningTemporaryDiskStore() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("WorkLog-session-persistence-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let schema = PersistenceController.schema()
+        let configuration = ModelConfiguration("session-persistence", schema: schema, url: directory.appendingPathComponent("test.store"), cloudKitDatabase: .none)
+        let start = Date(timeIntervalSinceReferenceDate: 100)
+        let expected = [
+            SessionWorkPeriod(start: start, end: start.addingTimeInterval(10)),
+            SessionWorkPeriod(start: start.addingTimeInterval(30), end: nil)
+        ]
+        let id: UUID = try autoreleasepool {
+            let container = try ModelContainer(for: schema, configurations: [configuration])
+            let context = ModelContext(container)
+            context.autosaveEnabled = false
+            let session = Session(project: nil, date: start, startTime: start, durationSeconds: 10, note: "same session", category: .work)
+            session.workPeriods = expected
+            context.insert(session)
+            try context.save()
+            return session.id
+        }
+
+        let reopened = try ModelContainer(for: schema, configurations: [configuration])
+        let context = ModelContext(reopened)
+        let sessions = try context.fetch(FetchDescriptor<Session>())
+        #expect(sessions.count == 1)
+        let restored = try #require(sessions.first)
+        #expect(restored.id == id)
+        #expect(restored.startTime == start)
+        #expect(restored.workPeriods == expected)
+        #expect(restored.durationSeconds == 10)
+        #expect(restored.note == "same session")
+        #expect(restored.status == .running)
     }
 
     @Test func migrationIsIdempotent() throws {

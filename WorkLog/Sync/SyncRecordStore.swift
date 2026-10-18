@@ -26,12 +26,17 @@ struct SyncInvoiceCollision: Identifiable {
 @MainActor
 protocol FolderSyncRecordStoreProtocol {
     func snapshot() throws -> [SyncRecordKey: Data]
+    func runningSessionKeys() throws -> Set<SyncRecordKey>
     func apply(_ changes: [SyncRecordChange]) throws
     func loadState(scope: String) throws -> FolderSyncState?
     func saveState(_ state: FolderSyncState, scope: String) throws
     func rollback()
     func duplicateInvoiceNumbers() throws -> [SyncInvoiceCollision]
     func renumberInvoice(id: UUID) throws
+}
+
+extension FolderSyncRecordStoreProtocol {
+    func runningSessionKeys() throws -> Set<SyncRecordKey> { [] }
 }
 
 enum SyncRecordStoreError: LocalizedError {
@@ -60,6 +65,11 @@ final class SwiftDataSyncRecordStore: FolderSyncRecordStoreProtocol {
     static let billingKey = SyncRecordKey(entity: .billingSettings, id: "issuer")
 
     init(modelContext: ModelContext) { self.modelContext = modelContext }
+
+    func runningSessionKeys() throws -> Set<SyncRecordKey> {
+        Set(try modelContext.fetch(FetchDescriptor<Session>()).filter { $0.status == .running }
+            .map { SyncRecordKey(entity: .session, id: $0.id.uuidString) })
+    }
 
     func snapshot() throws -> [SyncRecordKey: Data] {
         var result: [SyncRecordKey: Data] = [:]

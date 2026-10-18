@@ -221,6 +221,7 @@ final class LegacyStorageMigrator {
                 status: sourceSession.status
             )
             session.id = sourceSession.id
+            session.workPeriodsData = sourceSession.workPeriodsData
             session.createdAt = sourceSession.createdAt
             session.updatedAt = sourceSession.updatedAt
             destination.insert(session)

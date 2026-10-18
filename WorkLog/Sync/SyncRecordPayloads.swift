@@ -71,6 +71,7 @@ struct SessionSyncPayload: Codable {
     var startTime: Date
     var endTime: Date?
     var durationSeconds: TimeInterval
+    var workPeriodsData: Data?
     var note: String
     var category: ProjectCategory
     var status: SessionStatus
@@ -84,6 +85,7 @@ struct SessionSyncPayload: Codable {
         startTime = model.startTime
         endTime = model.endTime
         durationSeconds = model.durationSeconds
+        workPeriodsData = model.workPeriodsData
         note = model.note
         category = model.category
         status = model.status
@@ -99,6 +101,7 @@ struct SessionSyncPayload: Codable {
         model.startTime = startTime
         model.endTime = endTime
         model.durationSeconds = durationSeconds
+        model.workPeriodsData = workPeriodsData
         model.note = note
         model.category = category
         model.status = status

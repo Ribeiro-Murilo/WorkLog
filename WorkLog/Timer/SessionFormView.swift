@@ -20,6 +20,10 @@ struct SessionFormView: View {
                         DatePicker("Início", selection: Binding(get: { viewModel.startTime }, set: { viewModel.startTime = $0 }))
                         DatePicker("Fim", selection: Binding(get: { viewModel.endTime }, set: { viewModel.endTime = $0 }))
                     }
+                    .disabled(viewModel.isTimeEditingLocked)
+                    if let explanation = viewModel.timeEditingExplanation {
+                        Text(explanation).font(.callout).foregroundStyle(.secondary)
+                    }
                     if !viewModel.conflictingSessions.isEmpty {
                         SessionConflictSection(
                             sessions: viewModel.conflictingSessions,
@@ -92,10 +96,12 @@ struct SessionConflictSection: View {
                     Text(session.project?.name ?? "Projeto removido")
                         .fontWeight(.medium)
                         .fixedSize(horizontal: false, vertical: true)
-                    Text(intervalLabel(start: session.startTime, end: session.endTime))
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
+                    ForEach(Array(session.occupiedWorkIntervals.enumerated()), id: \.offset) { _, interval in
+                        Text(intervalLabel(start: interval.start, end: interval.end == .distantFuture ? nil : interval.end))
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
                 .padding(.vertical, 2)
             }
