@@ -142,7 +142,12 @@ struct ProjectDetailView: View {
                 }
             } else {
                 HStack(spacing: 10) {
-                    TimerControlButton(title: "Iniciar", systemImage: "play.fill") { viewModel.start() }
+                    if viewModel.canResume {
+                        TimerControlButton(title: "Retomar", systemImage: "play.fill") { viewModel.resume() }
+                    } else {
+                        TimerControlButton(title: "Iniciar", systemImage: "play.fill") { viewModel.start() }
+                            .disabled(project.isArchived)
+                    }
                     Button {
                         showingNewSessionForm = true
                     } label: {

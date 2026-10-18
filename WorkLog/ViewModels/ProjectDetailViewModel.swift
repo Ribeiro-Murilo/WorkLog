@@ -14,6 +14,7 @@ final class ProjectDetailViewModel {
     private(set) var comments: [Comment] = []
     var errorMessage: String?
 
+    var canResume: Bool { (try? timerService.resumableSession(for: project)) != nil }
     var isActiveProject: Bool { timerService.activeProject?.id == project.id }
     var isRunning: Bool { timerService.isRunning && isActiveProject }
     var elapsed: TimeInterval { timerService.elapsed }
@@ -59,6 +60,15 @@ final class ProjectDetailViewModel {
     func start() {
         do {
             try timerService.start(project: project)
+            reload()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func resume() {
+        do {
+            try timerService.resume(project: project)
             reload()
         } catch {
             errorMessage = error.localizedDescription

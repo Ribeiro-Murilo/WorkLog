@@ -11,6 +11,7 @@ final class TimerViewModel {
 
     var activeProject: Project? { timerService.activeProject }
     var isRunning: Bool { timerService.isRunning }
+    var canResume: Bool { (try? timerService.resumableSession(for: nil)) != nil }
     var elapsed: TimeInterval { timerService.elapsed }
 
     var elapsedFormatted: String {

@@ -37,10 +37,12 @@ struct NotchPanelRenderingTests {
         let paused = Session(project: project, date: .now, startTime: .now, endTime: .now,
                              durationSeconds: 5076, category: .personal, status: .paused)
         try dependencies.sessionRepository.insert(paused)
+        timer.pausedSession = paused
         model.reload()
         try capture("notch-paused", model: model, dependencies: dependencies, output: output)
 
         paused.status = .completed
+        timer.pausedSession = nil
         try dependencies.sessionRepository.update(paused)
         model.reload()
         try capture("notch-idle", model: model, dependencies: dependencies, output: output)
@@ -89,11 +91,14 @@ struct NotchPanelRenderingTests {
 @MainActor
 private final class NotchPreviewTimer: TimerServiceProtocol {
     var activeSession: Session?
+    var pausedSession: Session?
     var activeProject: Project?
     var elapsed: TimeInterval = 0
     var isRunning: Bool { activeSession != nil }
     func start(project: Project) throws {}
     func pause() throws {}
+    func resumableSession(for project: Project?) throws -> Session? { pausedSession }
+    func resume(project: Project) throws {}
     func resume() throws {}
     func stop() throws {}
     func addManualSession(project: Project, startTime: Date, endTime: Date, note: String) throws {}

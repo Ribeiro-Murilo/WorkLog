@@ -11,6 +11,8 @@ protocol TimerServiceProtocol: AnyObject {
     func start(project: Project) throws
     func pause() throws
     func resume() throws
+    func resume(project: Project) throws
+    func resumableSession(for project: Project?) throws -> Session?
     func stop() throws
     func addManualSession(project: Project, startTime: Date, endTime: Date, note: String) throws
 }
@@ -79,9 +81,40 @@ final class TimerService: TimerServiceProtocol {
         stopTicking()
     }
 
+    /// A pausa só continua enquanto for o último intervalo no escopo solicitado.
+    /// Consultar o repositório também protege atalhos e painéis que ficaram abertos.
+    func resumableSession(for project: Project?) throws -> Session? {
+        // Fetches não notificam Observation quando uma sessão entra/sai do resultado.
+        // A revisão publica as mudanças de coleção para os controles já visíveis.
+        _ = sessionRepository.dataRevision
+        let latest: Session?
+        if let project {
+            guard let persistedProject = try projectRepository.fetch(by: project.id),
+                  !persistedProject.isArchived else { return nil }
+            latest = try sessionRepository.fetchAll(for: persistedProject).first
+        } else {
+            guard !isRunning, try sessionRepository.fetchActiveSession() == nil else { return nil }
+            latest = try sessionRepository.fetchRecent(limit: 1).first
+        }
+        guard let latest, latest.status == .paused, latest.endTime != nil,
+              let projectID = latest.project?.id,
+              let persistedProject = try projectRepository.fetch(by: projectID),
+              !persistedProject.isArchived else { return nil }
+        return latest
+    }
+
     func resume() throws {
-        guard let lastProject = try sessionRepository.fetchRecent(limit: 1).first?.project else { return }
-        try start(project: lastProject)
+        guard let session = try resumableSession(for: nil), let project = session.project else { return }
+        try start(project: project)
+    }
+
+    func resume(project: Project) throws {
+        guard let session = try resumableSession(for: project), let project = session.project else { return }
+        // Um intervalo iniciado por outra superfície precisa ser fechado antes da troca.
+        // O comando contextual preserva a mesma auto-pausa de Iniciar.
+        activeSession = try sessionRepository.fetchActiveSession()
+        activeProject = activeSession?.project
+        try start(project: project)
     }
 
     func stop() throws {

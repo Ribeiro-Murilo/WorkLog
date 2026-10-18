@@ -1,8 +1,10 @@
 import Foundation
+import Observation
 import SwiftData
 
 @MainActor
 protocol SessionRepositoryProtocol {
+    var dataRevision: Int { get }
     func fetchAll(for project: Project?) throws -> [Session]
     func fetchSessions(in interval: DateInterval) throws -> [Session]
     func fetchActiveSession() throws -> Session?
@@ -15,8 +17,10 @@ protocol SessionRepositoryProtocol {
 }
 
 @MainActor
+@Observable
 final class SessionRepository: SessionRepositoryProtocol {
     private let modelContext: ModelContext
+    private(set) var dataRevision = 0
 
     init(modelContext: ModelContext) {
         self.modelContext = modelContext
@@ -84,16 +88,19 @@ final class SessionRepository: SessionRepositoryProtocol {
     func insert(_ session: Session) throws {
         modelContext.insert(session)
         try modelContext.save()
+        dataRevision += 1
     }
 
     func update(_ session: Session) throws {
         session.updatedAt = .now
         try modelContext.save()
+        dataRevision += 1
     }
 
     func delete(_ session: Session) throws {
         modelContext.delete(session)
         try modelContext.save()
+        dataRevision += 1
     }
 }
 

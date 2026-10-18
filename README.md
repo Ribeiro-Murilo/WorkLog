@@ -61,7 +61,7 @@ Regras de negócio centralizadas em `TimerService`:
 - Apenas **uma sessão pode estar com status `.running`** em todo o app.
 - `start(project:)` fecha (pausa) a sessão em execução atual, se houver, e cria uma **nova** `Session` para o projeto informado — cada intervalo iniciado/pausado é uma sessão independente (ex.: 08:00–09:15, 10:30–12:00).
 - `pause()` fecha a sessão atual com status `.paused` e zera o estado ativo.
-- `resume()` localiza o projeto da última sessão e chama `start(project:)` novamente, criando uma nova sessão.
+- `resume()` só continua a última sessão global quando ela está pausada e não há timer em execução. A retomada pelo detalhe do projeto exige que o último intervalo daquele projeto esteja pausado e o projeto não esteja arquivado. A validação consulta o estado persistido; sessões concluídas não são retomadas. Continuar cria um novo intervalo a partir de agora, sem contabilizar a pausa.
 - `stop()` fecha a sessão atual com status `.completed`.
 - `addManualSession(...)` valida (via `ValidationService`) e verifica sobreposição de horário (via `SessionRepository.hasOverlap`) antes de inserir. No formulário manual, conflitos mostram projeto e intervalo, considerando todos os projetos. Uma sugestão oferece o horário livre mais próximo no mesmo dia, preservando a duração (em empate, prefere o posterior). O botão “Usar horário sugerido” apenas ajusta o formulário; Salvar revalida os horários. Quando não cabe no dia, o formulário informa a ausência de horário livre.
 - Pausas automáticas: `IdleDetectionService` observa `NSWorkspace` (sono do sistema, tela bloqueada) e faz polling do tempo de inatividade via `CGEventSource`; ao disparar, chama `TimerService.pause()`.

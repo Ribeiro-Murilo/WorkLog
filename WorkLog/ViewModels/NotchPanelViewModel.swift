@@ -68,9 +68,7 @@ final class NotchPanelViewModel {
             let todaySessions = try sessionRepository.fetchSessions(in: day)
             projects = loadedProjects
             recentProjectIDs = sessions.compactMap { $0.project?.id }
-            // A completed session must never present a misleading “Retomar” control.
-            let latest = sessions.first
-            pausedSession = latest?.status == .paused && latest?.project?.isArchived == false ? latest : nil
+            pausedSession = try timerService.resumableSession(for: nil)
             self.settings = settings
             todayTotal = todaySessions.filter { $0.status != .running && $0.endTime != nil }
                 .reduce(0) { $0 + $1.durationSeconds }

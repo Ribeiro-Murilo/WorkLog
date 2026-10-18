@@ -66,7 +66,7 @@ struct MenuBarPopoverView: View {
                 Text("Nenhum timer ativo")
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(.secondary)
-                if let timerViewModel {
+                if let timerViewModel, timerViewModel.canResume {
                     TimerControlButton(title: "Continuar", systemImage: "play.fill") {
                         timerViewModel.resume()
                         menuBarViewModel?.reload()

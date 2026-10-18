@@ -211,6 +211,8 @@ private final class FailingNotchTimer: TimerServiceProtocol {
     }
     func start(project: Project) throws { throw Failure() }
     func pause() throws { throw Failure() }
+    func resumableSession(for project: Project?) throws -> Session? { nil }
+    func resume(project: Project) throws { throw Failure() }
     func resume() throws { throw Failure() }
     func stop() throws { throw Failure() }
     func addManualSession(project: Project, startTime: Date, endTime: Date, note: String) throws { throw Failure() }
