@@ -7,9 +7,10 @@ struct NotchLifecycleObserverTests {
     @Test(arguments: [
         NSWorkspace.didWakeNotification,
         NSWorkspace.screensDidWakeNotification,
-        NSWorkspace.sessionDidBecomeActiveNotification
+        NSWorkspace.sessionDidBecomeActiveNotification,
+        NSWorkspace.activeSpaceDidChangeNotification
     ])
-    func workspaceReturnRefreshesNotch(notification: Notification.Name) {
+    func workspaceChangeRefreshesNotch(notification: Notification.Name) {
         let center = NotificationCenter()
         var refreshCount = 0
         let observer = NotchLifecycleObserver(notificationCenter: center) {
@@ -32,7 +33,6 @@ struct NotchLifecycleObserverTests {
 
         withExtendedLifetime(observer) {
             for notification in [
-                NSWorkspace.activeSpaceDidChangeNotification,
                 NSApplication.didBecomeActiveNotification,
                 NSWorkspace.willSleepNotification,
                 NSWorkspace.screensDidSleepNotification,
@@ -53,12 +53,13 @@ struct NotchLifecycleObserverTests {
         }
         weak let weakObserver = observer
 
-        #expect(center.registeredCount == 3)
+        #expect(center.registeredCount == 4)
         observer = nil
 
         #expect(weakObserver == nil)
         #expect(center.registeredCount == 0)
         center.post(name: NSWorkspace.didWakeNotification, object: nil)
+        center.post(name: NSWorkspace.activeSpaceDidChangeNotification, object: nil)
         #expect(refreshCount == 0)
     }
 }

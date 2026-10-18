@@ -98,7 +98,10 @@ final class NotchWindowController: NSObject, NSWindowDelegate {
             defer: false
         )
         panel.level = .statusBar
-        panel.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary]
+        // O overlay deve acompanhar também os Spaces de tela cheia de OUTROS apps.
+        panel.collectionBehavior = [
+            .canJoinAllSpaces, .stationary, .fullScreenAuxiliary, .canJoinAllApplications
+        ]
         panel.isOpaque = false
         panel.backgroundColor = .clear
         panel.hasShadow = false
@@ -288,10 +291,10 @@ final class NotchWindowController: NSObject, NSWindowDelegate {
             "transition expanded=\(expanded) keyBefore=\(self.panel.isKeyWindow) from=\(NSStringFromRect(self.panel.frame), privacy: .public) to=\(NSStringFromRect(targetFrame), privacy: .public)"
         )
 
-        // Torna o painel *key* ao expandir para que os controles SwiftUI recebam
-        // cliques; ao colapsar, devolve o foco para não reter a *key window*.
+        // Hover só apresenta o overlay no Space atual. O foco é solicitado no
+        // mouse-down por prepareForMouseEvent, quando o usuário interage de fato.
         if expanded {
-            panel.makeKeyAndOrderFront(nil)
+            panel.orderFrontRegardless()
         } else if panel.isKeyWindow || NSApp.keyWindow === panel {
             // resignKey() é um callback do AppKit, não uma API de transferência de
             // foco. Ordenar para fora libera tanto o estado local quanto a key

@@ -16,7 +16,8 @@ final class NotchLifecycleObserver {
         for notification in [
             NSWorkspace.didWakeNotification,
             NSWorkspace.screensDidWakeNotification,
-            NSWorkspace.sessionDidBecomeActiveNotification
+            NSWorkspace.sessionDidBecomeActiveNotification,
+            NSWorkspace.activeSpaceDidChangeNotification
         ] {
             let token = notificationCenter.addObserver(
                 forName: notification,
