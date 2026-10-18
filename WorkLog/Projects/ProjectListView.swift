@@ -22,7 +22,7 @@ struct ProjectListView: View {
                     }
                 }
                 .sheet(isPresented: $showingNewProjectForm) {
-                    ProjectFormView(project: nil)
+                    ProjectFormView(project: nil, onSaved: { viewModel?.reload() })
                 }
                 .alert(
                     "Excluir projeto?",
