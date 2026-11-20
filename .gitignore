@@ -7,6 +7,10 @@ desktop-electron/node_modules
 desktop-electron/dist
 desktop-electron/dist-electron
 desktop-electron/release
+desktop-windows/node_modules
+desktop-windows/dist
+desktop-windows/dist-electron
+desktop-windows/release
 
 # Local configuration and signing material
 .env

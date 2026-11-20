@@ -1,6 +1,6 @@
 # WorkLog
 
-Aplicativo nativo para macOS, de uso pessoal, para controle de tempo em projetos e demandas através de um cronômetro integrado à Menu Bar.
+Aplicativo nativo para macOS, de uso pessoal, para controle de tempo em projetos e demandas através de um cronômetro integrado à Menu Bar / Notch. Para colegas em Windows, há também a versão desktop dedicada em [`desktop-windows/`](desktop-windows/README.md).
 
 ## Tecnologias
 
@@ -159,3 +159,19 @@ make publish VERSION=1.1.0
 ```
 
 Isso builda em Release, empacota o `.zip`, assina a atualização com a chave EdDSA local (`scripts/sparkle-bin/sign_update`) e insere a entrada correspondente em `appcast.xml`. O script não publica nada sozinho — ao final ele imprime os passos manuais: criar a tag, subir o Release no GitHub com o `.zip` anexado (`gh release create`) e dar `git push` no `appcast.xml` atualizado. Só depois desse push o botão "Verificar atualizações…" do app passa a enxergar a nova versão.
+
+## Versão Windows (`desktop-windows/`)
+
+O diretório [`desktop-windows/`](desktop-windows/README.md) traz o port completo para Windows (Electron + React + TypeScript + `node:sqlite`), incluindo:
+
+- **Barrinha superior estilo Notch compacta** (`112 × 18 px` parada / `144 × 22 px` com timer ativo, expandindo ao passar o mouse para `368 px`), com opção de alternar para o modo Bandeja (Tray) em **Configurações → Geral**.
+- **Mesmas regras de negócio e backup v2 compatível** com a versão macOS (ciclos de sessão, sugestões de conflito, relatórios CSV/Excel/PDF, faturamento `FAT-NNNN`, atalhos globais e pausa por inatividade).
+- **Build automático para Windows:** o workflow [`.github/workflows/windows-desktop.yml`](.github/workflows/windows-desktop.yml) gera os artefatos `WorkLog-Setup-<versão>.exe` e `WorkLog-Portable-<versão>.exe` em `windows-latest`. Para rodar localmente:
+
+```bash
+cd desktop-windows
+npm ci
+npm test
+npm run build
+npm run dist:win   # Em máquina Windows para gerar o instalador .exe
+```

@@ -1,0 +1,529 @@
+html.notch-mode,
+body.notch-mode {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: transparent !important;
+  font-family: "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, sans-serif;
+  color: #ffffff;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+html.notch-mode * {
+  box-sizing: border-box;
+}
+
+.notch-root {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  background: transparent;
+}
+
+.notch-collapsed-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.notch-svg-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+
+.notch-collapsed-inner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 12px;
+  height: 100%;
+}
+
+.notch-collapsed-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+}
+
+.notch-collapsed-running-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.notch-collapsed-time {
+  font-family: "Cascadia Mono", "Consolas", ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: #ffffff;
+  line-height: 1;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+}
+
+.notch-expanded-shell {
+  position: relative;
+  width: 368px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  animation: notchExpandIn 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes notchExpandIn {
+  from {
+    opacity: 0.92;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.notch-expanded-content {
+  position: relative;
+  z-index: 1;
+  width: 340px;
+  padding: 10px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.notch-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.notch-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.notch-pin-btn {
+  width: 28px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  color: #a5a7ae;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.notch-pin-btn:hover {
+  color: #ffffff;
+}
+
+.notch-pin-btn.pinned {
+  color: #ffffff;
+}
+
+.notch-rule {
+  height: 1px;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.notch-section-label {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: #a5a7ae;
+}
+
+.notch-timer-block {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.notch-project-meta {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.notch-project-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  margin-top: 4px;
+  flex-shrink: 0;
+}
+
+.notch-project-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.notch-project-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.notch-project-client {
+  font-size: 12px;
+  color: #a5a7ae;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.notch-clock {
+  font-family: "Cascadia Mono", "Consolas", ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 42px;
+  font-weight: 400;
+  line-height: 1.08;
+  text-align: center;
+  padding: 3px 0;
+  color: #ffffff;
+}
+
+.notch-actions-row {
+  display: flex;
+  gap: 10px;
+}
+
+.notch-btn {
+  height: 36px;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  border: none;
+  transition: opacity 0.1s ease, background-color 0.1s ease;
+}
+
+.notch-btn:active {
+  opacity: 0.85;
+}
+
+.notch-btn-prominent {
+  flex: 1;
+  background: rgb(232, 232, 232);
+  color: #000000;
+}
+
+.notch-btn-prominent:active {
+  background: rgb(184, 184, 184);
+}
+
+.notch-btn-secondary {
+  width: 114px;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.065);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.notch-idle-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 5px 0;
+}
+
+.notch-idle-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.notch-idle-desc {
+  font-size: 12px;
+  color: #a5a7ae;
+  line-height: 1.4;
+}
+
+.notch-inline-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 11px;
+  color: rgb(255, 176, 158);
+  line-height: 1.35;
+}
+
+.notch-search {
+  height: 34px;
+  padding: 0 11px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.065);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.notch-search.focused {
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.notch-search-icon {
+  color: #a5a7ae;
+  flex-shrink: 0;
+}
+
+.notch-search-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 12px;
+}
+
+.notch-search-input::placeholder {
+  color: #a5a7ae;
+}
+
+.notch-search-clear {
+  border: none;
+  background: transparent;
+  color: #a5a7ae;
+  cursor: pointer;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+}
+
+.notch-list-section {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.notch-empty-list {
+  font-size: 12px;
+  color: #a5a7ae;
+  padding: 9px 0;
+}
+
+.notch-project-scroll {
+  max-height: 144px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+}
+
+.notch-project-row {
+  width: 100%;
+  height: 46px;
+  padding: 0 6px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+}
+
+.notch-project-row:hover {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.notch-row-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.notch-row-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.notch-row-title-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.notch-row-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.notch-row-star {
+  color: #a5a7ae;
+  flex-shrink: 0;
+}
+
+.notch-row-client {
+  font-size: 11px;
+  color: #a5a7ae;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.notch-row-play {
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #ffffff;
+}
+
+.notch-project-row:hover .notch-row-play {
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+.notch-row-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+  margin-left: 30px;
+}
+
+.notch-today-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+}
+
+.notch-today-label {
+  color: #a5a7ae;
+}
+
+.notch-today-value {
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: #ffffff;
+}
+
+.notch-footer {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.notch-footer-link {
+  border: none;
+  background: transparent;
+  color: #a5a7ae;
+  font-family: inherit;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 26px;
+  padding: 0;
+  cursor: pointer;
+}
+
+.notch-footer-link:hover {
+  color: #ffffff;
+}
+
+.notch-footer-spacer {
+  flex: 1;
+}
+
+.notch-footer-icon-btn {
+  width: 26px;
+  height: 26px;
+  border: none;
+  background: transparent;
+  color: #a5a7ae;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.notch-footer-icon-btn:hover {
+  color: #ffffff;
+}
+
+.notch-menu-popover {
+  position: absolute;
+  right: 0;
+  bottom: 32px;
+  min-width: 196px;
+  background: #141416;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  z-index: 20;
+}
+
+.notch-menu-item {
+  border: none;
+  background: transparent;
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 12px;
+  padding: 7px 10px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.notch-menu-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.notch-menu-item.danger {
+  color: rgb(255, 176, 158);
+}
