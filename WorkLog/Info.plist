@@ -3,8 +3,8 @@
 <plist version="1.0">
 <dict>
 	<key>SUFeedURL</key>
-	<string>https://raw.githubusercontent.com/Ribeiro-Murilo/WorkLog/main/appcast.xml</string>
+	<string>https://raw.githubusercontent.com/Ribeiro-Murilo/WorkLog/main/appcast-v2.xml</string>
 	<key>SUPublicEDKey</key>
-	<string>64wJTijLQkZLUsb1LHtftlHLqHcyiAUo7OyCygXk6g0=</string>
+	<string>ju9Pltb7PYnZwoI69b6XB2/6Rp4tf2DcxsOqjiA6Drw=</string>
 </dict>
 </plist>

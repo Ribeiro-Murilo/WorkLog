@@ -83,7 +83,7 @@ Regras de negócio centralizadas em `TimerService`:
 - **Exportação Excel sem biblioteca externa:** gerada como SpreadsheetML 2003 XML (`.xml` com `progid="Excel.Sheet"`), formato nativamente aberto pelo Excel sem depender de bibliotecas de geração de `.xlsx`.
 - **Backup em JSON:** `BackupService` exporta/importa projetos, sessões, comentários, faturas, presets, preferências e atalhos. Preserva os IDs, aceita backups antigos e importa tudo em uma transação, mantendo a persistência SwiftData como fonte de verdade em tempo de execução.
 - **`#Index` do SwiftData removido dos models:** a mesma toolchain apresentou uma falha (`Can't create an index element with composite property`) ao declarar índices sobre propriedades baseadas em enum. Os índices foram removidos; para o volume de dados de uso pessoal (milhares de projetos, centenas de milhares de sessões) o impacto é aceitável, mas é um ponto a revisitar em versões futuras do SDK.
-- **Atualização automática via Sparkle:** dependência SPM (`sparkle-project/Sparkle`) usada para o botão "Verificar atualizações…" em Configurações → Sobre. A checagem é sempre manual (`automaticallyChecksForUpdates = false`); não há verificação em segundo plano. As atualizações são publicadas via GitHub Releases e descritas em `appcast.xml` (servido via `raw.githubusercontent.com`), assinadas com uma chave EdDSA local (gerada com `scripts/sparkle-bin/generate_keys`, privada no Keychain). Ver `scripts/release.sh` / `make publish VERSION=x.y.z` para o fluxo de publicação.
+- **Atualizações via Sparkle.** O botão **Verificar atualizações…** em Configurações → Atualizações consulta `appcast-v2.xml` a partir do build 15. As atualizações ficam no GitHub Releases e usam a chave EdDSA da conta `WorkLog-updates-v2` no Chaveiro do macOS. A checagem é iniciada pelo usuário.
 - **App Sandbox desativado (`ENABLE_APP_SANDBOX = NO`):** necessário porque um app sandboxed não pode se autossubstituir como o instalador padrão do Sparkle exige (isso demandaria os XPC services de instalação sandboxed do Sparkle). Como o app já não é distribuído pela Mac App Store, essa é a configuração padrão usada por apps atualizados via Sparkle.
 
 ## Testes
@@ -158,7 +158,7 @@ Ou, no Xcode: **Product → Archive**, depois **Distribute App → Copy App** (o
 make publish VERSION=1.1.0
 ```
 
-Isso builda em Release, empacota o `.zip`, assina a atualização com a chave EdDSA local (`scripts/sparkle-bin/sign_update`) e insere a entrada correspondente em `appcast.xml`. O script não publica nada sozinho — ao final ele imprime os passos manuais: criar a tag, subir o Release no GitHub com o `.zip` anexado (`gh release create`) e dar `git push` no `appcast.xml` atualizado. Só depois desse push o botão "Verificar atualizações…" do app passa a enxergar a nova versão.
+O script confere se a chave no Chaveiro corresponde à chave pública do app, compila o próximo build em Release, assina o ZIP e acrescenta a versão a `appcast-v2.xml`. Publique o ZIP no GitHub Releases antes de enviar o feed atualizado para `main`. Confirme a atualização em uma versão instalada que já consulte o novo feed.
 
 ## Versão Windows (`desktop-windows/`)
 

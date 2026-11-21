@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+    <channel>
+        <title>WorkLog</title>
+        <item>
+            <title>Versão 0.3.0</title>
+            <pubDate>Sat, 21 Nov 2026 03:35:58 +0000</pubDate>
+            <sparkle:version>15</sparkle:version>
+            <sparkle:shortVersionString>0.3.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>26.5</sparkle:minimumSystemVersion>
+            <enclosure url="https://github.com/Ribeiro-Murilo/WorkLog/releases/download/v0.3.0/WorkLog-0.3.0-macOS-build15.zip"
+                       sparkle:edSignature="0uqn0vetFS5lidpwQub2vsG7lkd4C4bjbaJariSMVD9FJrswfNjMQULtZsaJTripoxxLrVvYlI9VKDKqUMbDCQ=="
+                       length="8415437" type="application/octet-stream" />
+        </item>
+    </channel>
+</rss>
