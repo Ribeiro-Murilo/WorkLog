@@ -1,6 +1,6 @@
 {
   "name": "worklog-windows",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "WorkLog para Windows: controle de horas com painel estilo notch no topo da tela.",
   "homepage": "https://github.com/Ribeiro-Murilo/WorkLog",
   "author": {

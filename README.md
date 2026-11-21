@@ -165,7 +165,7 @@ Isso builda em Release, empacota o `.zip`, assina a atualização com a chave Ed
 O diretório [`desktop-windows/`](desktop-windows/README.md) traz o port completo para Windows (Electron + React + TypeScript + `node:sqlite`), incluindo:
 
 - **Barrinha superior estilo Notch compacta** (`112 × 18 px` parada / `144 × 22 px` com timer ativo, expandindo ao passar o mouse para `368 px`), com opção de alternar para o modo Bandeja (Tray) em **Configurações → Geral**.
-- **Mesmas regras de negócio e backup v2 compatível** com a versão macOS (ciclos de sessão, sugestões de conflito, relatórios CSV/Excel/PDF, faturamento `FAT-NNNN`, atalhos globais e pausa por inatividade).
+- **Mesmas regras de negócio e backup v3 compatível** com a versão macOS (ciclos de sessão, moedas por projeto, relatórios CSV/Excel/PDF, faturamento `FAT-NNNN`, atalhos globais e pausa por inatividade).
 - **Build automático para Windows:** o workflow [`.github/workflows/windows-desktop.yml`](.github/workflows/windows-desktop.yml) gera os artefatos `WorkLog-Setup-<versão>.exe` e `WorkLog-Portable-<versão>.exe` em `windows-latest`. Para rodar localmente:
 
 ```bash
