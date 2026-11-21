@@ -9,8 +9,17 @@ protocol ProjectRepositoryProtocol {
     func isDuplicate(name: String, client: String, excluding id: UUID?) throws -> Bool
     func insert(_ project: Project) throws
     func update(_ project: Project) throws
+    func update(_ project: Project, currency: ProjectCurrency) throws
     func delete(_ project: Project) throws
     func archive(_ project: Project, archived: Bool) throws
+}
+
+enum ProjectRepositoryError: LocalizedError, Equatable {
+    case currencyLocked
+
+    var errorDescription: String? {
+        "A moeda não pode ser alterada enquanto houver registros de trabalho neste projeto."
+    }
 }
 
 @MainActor
@@ -72,6 +81,22 @@ final class ProjectRepository: ProjectRepositoryProtocol {
     func update(_ project: Project) throws {
         project.updatedAt = .now
         try modelContext.save()
+    }
+
+    func update(_ project: Project, currency: ProjectCurrency) throws {
+        let previousCode = project.currencyCode
+        let previousUpdate = project.updatedAt
+        guard currency == project.currency || project.canChangeCurrency else {
+            throw ProjectRepositoryError.currencyLocked
+        }
+        project.currencyCode = currency.rawValue
+        do {
+            try update(project)
+        } catch {
+            project.currencyCode = previousCode
+            project.updatedAt = previousUpdate
+            throw error
+        }
     }
 
     func delete(_ project: Project) throws {

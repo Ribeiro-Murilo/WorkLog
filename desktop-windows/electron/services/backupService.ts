@@ -1,3 +1,4 @@
+import { isCurrencyCode, type CurrencyCode } from "../../src/shared/currency";
 import type { DatabaseSync } from "node:sqlite";
 import { runInTransaction } from "../data/database";
 import {
@@ -151,6 +152,7 @@ export class BackupService {
         client: p.client,
         createdAt: isoToAppleSeconds(p.createdAt),
         dailyRate: p.dailyRate,
+        currencyCode: p.currencyCode,
         descriptionText: p.descriptionText,
         id: p.id,
         isArchived: p.isArchived,
@@ -229,6 +231,7 @@ export class BackupService {
         periodStart: isoToAppleSeconds(inv.periodStart),
         status: inv.status,
         totalValue: inv.totalValue,
+        currencyCode: inv.currencyCode,
         updatedAt: isoToAppleSeconds(inv.updatedAt)
       }));
 
@@ -273,7 +276,7 @@ export class BackupService {
     const archive = {
       comments,
       exportedAt: isoToAppleSeconds(now.toISOString()),
-      formatVersion: 2,
+      formatVersion: 3,
       invoices,
       projects,
       reportPresets,
@@ -300,7 +303,7 @@ export class BackupService {
     }
 
     if ("formatVersion" in parsed && parsed.formatVersion !== undefined) {
-      if (parsed.formatVersion !== 2) {
+      if (parsed.formatVersion !== 2 && parsed.formatVersion !== 3) {
         throw new BackupArchiveError(BACKUP_ERROR_MESSAGES.unsupportedVersion);
       }
     } else {
@@ -354,11 +357,12 @@ export class BackupService {
       throw new BackupArchiveError(BACKUP_ERROR_MESSAGES.invalidArchive);
     }
 
-    const projects = projectsRaw.map(parseProjectPayload);
+    const hasCurrency = parsed.formatVersion === 3;
+    const projects = projectsRaw.map((raw) => parseProjectPayload(raw, hasCurrency));
     const sessions = sessionsRaw.map(parseSessionPayload);
     const comments = commentsRaw.map(parseCommentPayload);
     const presets = presetsRaw.map(parsePresetPayload);
-    const invoices = invoicesRaw.map(parseInvoicePayload);
+    const invoices = invoicesRaw.map((raw) => parseInvoicePayload(raw, hasCurrency));
     const settingsList = settingsRaw.map(parseSettingsPayload);
     const shortcuts = shortcutsRaw.map(parseShortcutPayload);
 
@@ -446,13 +450,28 @@ function requireString(obj: Record<string, unknown>, key: string): string {
   return val;
 }
 
-function parseProjectPayload(raw: unknown): Project {
+function parseBackupCurrency(value: unknown, hasCurrency: boolean): CurrencyCode {
+  if (!hasCurrency) return "BRL";
+  if (!isCurrencyCode(value)) throw new BackupArchiveError(BACKUP_ERROR_MESSAGES.invalidArchive);
+  return value;
+}
+
+function parseBackupAmount(value: unknown, hasCurrency: boolean): number {
+  if (!hasCurrency) return Number(value) || 0;
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+    throw new BackupArchiveError(BACKUP_ERROR_MESSAGES.invalidArchive);
+  }
+  return value;
+}
+
+function parseProjectPayload(raw: unknown, hasCurrency: boolean): Project {
   const o = asObject(raw);
   return {
     id: requireString(o, "id"),
     name: typeof o.name === "string" ? o.name : "",
     client: typeof o.client === "string" ? o.client : "",
-    dailyRate: Number(o.dailyRate) || 0,
+    dailyRate: parseBackupAmount(o.dailyRate, hasCurrency),
+    currencyCode: parseBackupCurrency(o.currencyCode, hasCurrency),
     category: o.category === "personal" ? "personal" : "work",
     tags: Array.isArray(o.tags) ? o.tags.map(String) : [],
     descriptionText: typeof o.descriptionText === "string" ? o.descriptionText : "",
@@ -509,9 +528,12 @@ function parsePresetPayload(raw: unknown): ReportPreset {
   };
 }
 
-function parseInvoicePayload(raw: unknown): Invoice {
+function parseInvoicePayload(raw: unknown, hasCurrency: boolean): Invoice {
   const o = asObject(raw);
   const num = Number(o.number) || 0;
+  if (hasCurrency && !Array.isArray(o.lineItems)) {
+    throw new BackupArchiveError(BACKUP_ERROR_MESSAGES.invalidArchive);
+  }
   const lineItems: InvoiceLineItem[] = Array.isArray(o.lineItems)
     ? o.lineItems.map((item) => {
         const li = asObject(item);
@@ -519,7 +541,7 @@ function parseInvoicePayload(raw: unknown): Invoice {
           date: appleSecondsToIso(li.date),
           projectName: typeof li.projectName === "string" ? li.projectName : "",
           durationSeconds: Number(li.durationSeconds) || 0,
-          value: Number(li.value) || 0
+          value: parseBackupAmount(li.value, hasCurrency)
         };
       })
     : [];
@@ -533,7 +555,8 @@ function parseInvoicePayload(raw: unknown): Invoice {
     periodEnd: appleSecondsToIso(o.periodEnd),
     lineItems,
     totalDurationSeconds: lineItems.reduce((acc, i) => acc + i.durationSeconds, 0),
-    totalValue: Number(o.totalValue) || 0,
+    totalValue: parseBackupAmount(o.totalValue, hasCurrency),
+    currencyCode: parseBackupCurrency(o.currencyCode, hasCurrency),
     status: o.status === "paid" ? "paid" : "pending",
     notes: typeof o.notes === "string" ? o.notes : "",
     createdAt: appleSecondsToIso(o.createdAt),

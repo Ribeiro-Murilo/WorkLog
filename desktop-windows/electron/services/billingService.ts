@@ -1,4 +1,5 @@
-import { formatClock, formatCurrencyBRL, formatShortDate } from "../../src/shared/format";
+import { formatClock, formatCurrency, formatShortDate } from "../../src/shared/format";
+import { validateCurrencyCode, type CurrencyCode } from "../../src/shared/currency";
 import { resolveReportPeriod } from "../../src/shared/periods";
 import { buildDetailedReportRows, buildInvoicePdfHtml } from "../../src/shared/reports";
 import type {
@@ -31,10 +32,12 @@ export class BillingService {
   preview(params: {
     client: string | null;
     period: ReportPeriod;
+    currencyCode?: CurrencyCode;
     customStart: string;
     customEnd: string;
     referenceDate?: Date;
   }): BillingPreview {
+    const currencyCode = validateCurrencyCode(params.currencyCode === undefined ? "BRL" : params.currencyCode);
     const interval = resolveReportPeriod(
       params.period,
       params.customStart,
@@ -52,6 +55,7 @@ export class BillingService {
         lineItems: [],
         totalDurationSeconds: 0,
         totalValue: 0,
+        currencyCode,
         overlapsExistingInvoice: false
       };
     }
@@ -60,7 +64,10 @@ export class BillingService {
     const projectsById = new Map(projects.map((p) => [p.id, p]));
     const sessions = this.sessionRepository
       .fetchSessionsInInterval(interval.startMs, interval.endMs)
-      .filter((s) => s.projectId && projectsById.get(s.projectId)?.client === params.client);
+      .filter((session) => {
+        const project = session.projectId ? projectsById.get(session.projectId) : undefined;
+        return project?.client === params.client && project.currencyCode === currencyCode;
+      });
 
     const detailed = buildDetailedReportRows(
       sessions,
@@ -101,7 +108,8 @@ export class BillingService {
       params.client,
       interval.startMs,
       interval.endMs,
-      null
+      null,
+      currencyCode
     );
 
     return {
@@ -111,6 +119,7 @@ export class BillingService {
       lineItems,
       totalDurationSeconds: lineItems.reduce((acc, i) => acc + i.durationSeconds, 0),
       totalValue: lineItems.reduce((acc, i) => acc + i.value, 0),
+      currencyCode,
       overlapsExistingInvoice
     };
   }
@@ -118,6 +127,7 @@ export class BillingService {
   generateInvoice(params: {
     client: string;
     period: ReportPeriod;
+    currencyCode?: CurrencyCode;
     customStart: string;
     customEnd: string;
     notes: string;
@@ -137,6 +147,7 @@ export class BillingService {
       periodStart: preview.periodStart,
       periodEnd: preview.periodEnd,
       lineItems: preview.lineItems,
+      currencyCode: preview.currencyCode,
       notes: params.notes
     });
   }
@@ -166,7 +177,8 @@ export class BillingService {
       client: invoice.client,
       lineItems: invoice.lineItems,
       totalDurationText: formatClock(invoice.totalDurationSeconds, false),
-      totalValueText: formatCurrencyBRL(invoice.totalValue),
+      totalValueText: formatCurrency(invoice.totalValue, invoice.currencyCode, true),
+      currencyCode: invoice.currencyCode,
       notes: invoice.notes,
       logoDataUrl: settings.includeLogoInPDF ? logoDataUrl : null
     });

@@ -1,9 +1,10 @@
 import {
   formatClock,
-  formatCurrencyBRL,
+  formatCurrency,
   formatShortDate,
   formatShortTime
 } from "./format";
+import type { CurrencyCode } from "./currency";
 import {
   calculateSessionValue,
   getRecordedSlices,
@@ -86,7 +87,7 @@ export function formatReportColumnValue(
     case "status":
       return SESSION_STATUS_LABELS[row.status];
     case "value":
-      return formatCurrencyBRL(row.estimatedValue);
+      return formatCurrency(row.estimatedValue, row.currencyCode, true);
     case "note":
       return row.note;
     case "tags":
@@ -121,6 +122,7 @@ export function buildDetailedReportRows(
         category: session.category,
         status: session.status,
         estimatedValue,
+        currencyCode: project?.currencyCode ?? "BRL",
         note: session.note,
         tags: project?.tags ?? [],
         descriptionText: project?.descriptionText ?? "",
@@ -199,6 +201,7 @@ export function buildReportRows(
       durationSeconds: group.reduce((acc, item) => acc + item.durationSeconds, 0),
       category: first.category,
       status: first.status,
+      currencyCode: first.currencyCode,
       estimatedValue: group.reduce((acc, item) => acc + item.estimatedValue, 0),
       note: notes.join(" | "),
       tags: first.tags,
@@ -275,7 +278,7 @@ export function buildReportPdfHtml(params: {
   columns: ReportColumnMeta[];
   rows: string[][];
   totalDurationText: string;
-  totalValueText: string;
+  totalValueText: string | null;
   logoDataUrl: string | null;
 }): string {
   const totalWeight = params.columns.reduce((acc, col) => acc + col.pdfWeight, 0) || 1;
@@ -339,7 +342,7 @@ export function buildReportPdfHtml(params: {
   </table>
   <div class="summary">
     <span>Total: ${htmlEscape(params.totalDurationText)}</span>
-    <span>Valor: ${htmlEscape(params.totalValueText)}</span>
+    ${params.totalValueText ? `<span>Valor: ${htmlEscape(params.totalValueText)}</span>` : ""}
   </div>
   <div class="footer">WorkLog</div>
 </body>
@@ -355,6 +358,7 @@ export function buildInvoicePdfHtml(params: {
   periodEndText: string;
   client: string;
   lineItems: InvoiceLineItem[];
+  currencyCode: CurrencyCode;
   totalDurationText: string;
   totalValueText: string;
   notes: string;
@@ -369,7 +373,7 @@ export function buildInvoicePdfHtml(params: {
         <td>${htmlEscape(formatShortDate(item.date))}</td>
         <td>${htmlEscape(item.projectName)}</td>
         <td class="num">${htmlEscape(formatClock(item.durationSeconds, false))}</td>
-        <td class="num">${htmlEscape(formatCurrencyBRL(item.value))}</td>
+        <td class="num">${htmlEscape(formatCurrency(item.value, params.currencyCode, true))}</td>
       </tr>`
     )
     .join("");

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu, nativeImage, nativeTheme, Tray } from "electron";
+import { app, BrowserWindow, Menu, nativeImage, nativeTheme, powerMonitor, Tray } from "electron";
 import fs from "node:fs";
 import path from "node:path";
 import { formatCompactTimer } from "../src/shared/format";
@@ -12,6 +12,7 @@ import { BillingService } from "./services/billingService";
 import { CommentRepository } from "./services/commentRepository";
 import { DashboardService } from "./services/dashboardService";
 import { InvoiceRepository } from "./services/invoiceRepository";
+import { PtaxService } from "./services/ptaxService";
 import { ProjectRepository } from "./services/projectRepository";
 import { ReportPresetRepository } from "./services/reportPresetRepository";
 import { ReportService } from "./services/reportService";
@@ -80,6 +81,9 @@ app.whenReady().then(() => {
     }
   });
 
+  const ptax = new PtaxService(path.join(app.getPath("userData"), "ptax.json"), () => {
+    broadcastSnapshot(services);
+  });
   const dashboard = new DashboardService(projects, sessions);
   const reports = new ReportService(projects, sessions, settingsRepo);
   const billing = new BillingService(projects, sessions, invoices, settingsRepo);
@@ -138,6 +142,7 @@ app.whenReady().then(() => {
     shortcutsRepo,
     timer,
     dashboard,
+    ptax,
     reports,
     billing,
     backup,
@@ -152,6 +157,8 @@ app.whenReady().then(() => {
   };
 
   registerIpc(services);
+  powerMonitor.on("resume", ptax.wake);
+  ptax.start();
   createTray();
   shortcuts.registerAll();
   idle.start();
@@ -172,6 +179,8 @@ app.on("before-quit", () => {
   if (services) {
     services.shortcuts.unregisterAll();
     services.idle.stop();
+    powerMonitor.off("resume", services.ptax.wake);
+    services.ptax.stop();
     services.timer.dispose();
     services.notch.destroy();
   }
@@ -255,6 +264,7 @@ function openDashboard(
   section?: DashboardSection,
   options?: { focusSearch?: boolean; openNewProject?: boolean }
 ): void {
+  services.ptax.wake();
   if (!dashboardWindow || dashboardWindow.isDestroyed()) {
     dashboardWindow = createDashboardWindow(section, options);
     dashboardWindow.once("ready-to-show", () => {

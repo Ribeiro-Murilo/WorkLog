@@ -5,6 +5,24 @@ import Testing
 
 @Suite(.serialized) @MainActor
 struct BackupServiceTests {
+    @Test func exportWritesVersionThreeWithExplicitBaseCurrencies() throws {
+        let context = try makeSyncRecordContext()
+        context.insert(Project(name: "Local", client: "Acme", dailyRate: 100, category: .work))
+        context.insert(Invoice(number: 1, client: "Acme", periodStart: .now, periodEnd: .now, lineItems: []))
+        try context.save()
+
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".json")
+        defer { try? FileManager.default.removeItem(at: url) }
+        try BackupService(modelContext: context).exportBackup(to: url)
+
+        let archive = try #require(JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any])
+        #expect(archive["formatVersion"] as? Int == 3)
+        let projects = try #require(archive["projects"] as? [[String: Any]])
+        let invoices = try #require(archive["invoices"] as? [[String: Any]])
+        #expect(projects.first?["currencyCode"] as? String == "BRL")
+        #expect(invoices.first?["currencyCode"] as? String == "BRL")
+    }
+
     @Test func backupRoundTripsPausedAndRunningWorkPeriodsWithoutAddingSessions() throws {
         let context = try makeSyncRecordContext()
         let start = Date(timeIntervalSinceReferenceDate: 100)
@@ -46,6 +64,8 @@ struct BackupServiceTests {
         let start = Date(timeIntervalSinceReferenceDate: 100)
         let original = Session(project: nil, date: start, startTime: start, endTime: start.addingTimeInterval(10), durationSeconds: 10, category: .work, status: .completed)
         let originalID = original.id
+        context.insert(Project(name: "Legacy project", client: "Acme", dailyRate: 50, category: .work))
+        context.insert(Invoice(number: 1, client: "Acme", periodStart: start, periodEnd: start, lineItems: []))
         context.insert(original)
         try context.save()
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".json")
@@ -53,11 +73,19 @@ struct BackupServiceTests {
         let service = BackupService(modelContext: context)
         try service.exportBackup(to: url)
         var object = try #require(JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any])
+        object["formatVersion"] = 2
+        for section in ["projects", "invoices"] {
+            var records = try #require(object[section] as? [[String: Any]])
+            records[0].removeValue(forKey: "currencyCode")
+            object[section] = records
+        }
         var sessions = try #require(object["sessions"] as? [[String: Any]])
         sessions[0].removeValue(forKey: "workPeriodsData")
         object["sessions"] = sessions
         try JSONSerialization.data(withJSONObject: object).write(to: url)
         try context.delete(model: Session.self)
+        try context.delete(model: Project.self)
+        try context.delete(model: Invoice.self)
         try context.save()
         try service.importBackup(from: url)
 
@@ -66,16 +94,18 @@ struct BackupServiceTests {
         #expect(restored.workPeriodsData == nil)
         #expect(restored.workPeriods == [SessionWorkPeriod(start: start, end: start.addingTimeInterval(10))])
         #expect(restored.durationSeconds == 10)
+        #expect(try context.fetch(FetchDescriptor<Project>()).first?.currency == .brl)
+        #expect(try context.fetch(FetchDescriptor<Invoice>()).first?.currency == .brl)
     }
 
     @Test func completeBackupRoundTripsAllEntitiesAndPreservesIDsOnRepeatedImport() throws {
         let context = try makeSyncRecordContext()
-        let project = Project(name: "All", client: "Client", dailyRate: 123, category: .work)
+        let project = Project(name: "All", client: "Client", dailyRate: 123, currency: .usd, category: .work)
         context.insert(project)
         context.insert(Session(project: project, date: .now, startTime: .now, category: .work))
         context.insert(WorkLog.Comment(text: "body", author: "who", project: project))
         context.insert(ReportPreset(name: "Preset", columns: [], grouping: .detailed))
-        context.insert(Invoice(number: 8, client: "Client", periodStart: .now, periodEnd: .now, lineItems: [InvoiceLineItem(date: .now, projectName: "Snapshot", durationSeconds: 10, value: 42)]))
+        context.insert(Invoice(number: 8, client: "Client", periodStart: .now, periodEnd: .now, lineItems: [InvoiceLineItem(date: .now, projectName: "Snapshot", durationSeconds: 10, value: 42)], currency: .eur))
         let settings = AppSettings(launchAtLogin: false, idleTimeoutMinutes: 25, invoiceIssuerName: "Issuer")
         settings.includeLogoInPDF = true; settings.lastInvoiceNumber = 20
         context.insert(settings)
@@ -94,14 +124,44 @@ struct BackupServiceTests {
         try service.importBackup(from: url); try service.importBackup(from: url)
         #expect(try context.fetch(FetchDescriptor<Project>()).count == 1)
         #expect(try context.fetch(FetchDescriptor<Project>()).first?.id == projectID)
+        #expect(try context.fetch(FetchDescriptor<Project>()).first?.currency == .usd)
         #expect(try context.fetch(FetchDescriptor<Session>()).first?.status == .running)
         #expect(try context.fetch(FetchDescriptor<WorkLog.Comment>()).count == 1)
         #expect(try context.fetch(FetchDescriptor<ReportPreset>()).count == 1)
         #expect(try context.fetch(FetchDescriptor<Invoice>()).first?.lineItems.first?.projectName == "Snapshot")
+        #expect(try context.fetch(FetchDescriptor<Invoice>()).first?.currency == .eur)
         #expect(try context.fetch(FetchDescriptor<ShortcutBinding>()).count == 1)
         #expect(try context.fetch(FetchDescriptor<AppSettings>()).first?.includeLogoInPDF == true)
         #expect(try context.fetch(FetchDescriptor<AppSettings>()).first?.lastInvoiceNumber == 20)
         #expect(!first.isEmpty)
+    }
+
+    @Test(arguments: ["projects", "invoices"])
+    func versionThreeRejectsInvalidCurrencyBeforeChangingData(_ section: String) throws {
+        let context = try makeSyncRecordContext()
+        context.insert(Project(name: "Original", client: "Acme", dailyRate: 50, currency: .usd, category: .work))
+        context.insert(Invoice(number: 1, client: "Acme", periodStart: .now, periodEnd: .now, lineItems: [], currency: .eur))
+        try context.save()
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".json")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let service = BackupService(modelContext: context)
+        try service.exportBackup(to: url)
+        let original = try #require(JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any])
+
+        let invalidValues: [Any?] = [nil, NSNull(), "GBP", "usd", 123]
+        for currency in invalidValues {
+            var archive = original
+            var records = try #require(archive[section] as? [[String: Any]])
+            records[0]["currencyCode"] = currency
+            archive[section] = records
+            var projects = try #require(archive["projects"] as? [[String: Any]])
+            projects[0]["name"] = "Do not apply"
+            archive["projects"] = projects
+            try JSONSerialization.data(withJSONObject: archive).write(to: url)
+            #expect(throws: (any Error).self) { try service.importBackup(from: url) }
+            #expect(try context.fetch(FetchDescriptor<Project>()).first?.name == "Original")
+            #expect(try context.fetch(FetchDescriptor<Invoice>()).first?.currency == .eur)
+        }
     }
 
     @Test func malformedRelationshipRollsBackArchiveAndFutureFormatIsRejected() throws {
@@ -162,6 +222,7 @@ struct BackupServiceTests {
         try service.importBackup(from: url); try service.importBackup(from: url)
         #expect(try context.fetch(FetchDescriptor<Project>()).count == 1)
         #expect(try context.fetch(FetchDescriptor<Project>()).first?.id == projectID)
+        #expect(try context.fetch(FetchDescriptor<Project>()).first?.currency == .brl)
         #expect(try context.fetch(FetchDescriptor<Session>()).first?.id == sessionID)
         #expect(try context.fetch(FetchDescriptor<Session>()).first?.project?.id == projectID)
     }

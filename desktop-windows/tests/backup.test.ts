@@ -32,7 +32,7 @@ function createServices() {
 }
 
 describe("backup", () => {
-  it("exporta e importa formatVersion 2 compatível com macOS (Apple Reference Date + workPeriodsData base64)", () => {
+  it("exporta e importa formatVersion 3 compatível com macOS (Apple Reference Date + workPeriodsData base64)", () => {
     const src = createServices();
     src.shortcuts.ensureDefaults();
     src.settings.save({ invoiceIssuerName: "Murilo Dev", lastInvoiceNumber: 5 });
@@ -40,10 +40,16 @@ describe("backup", () => {
       name: "WorkLog",
       client: "Interno",
       dailyRate: 1000,
+      currencyCode: "USD",
       category: "work",
       tags: ["swift", "win"],
       descriptionText: "Port",
       status: "inProgress"
+    });
+    src.invoices.insert({
+      number: 5, client: proj.client, periodStart: "2026-10-10T00:00:00.000Z",
+      periodEnd: "2026-10-11T00:00:00.000Z", currencyCode: "USD",
+      lineItems: [{ date: "2026-10-10T00:00:00.000Z", projectName: proj.name, durationSeconds: 3600, value: 125 }]
     });
     src.comments.insert({ projectId: proj.id, text: "Nota inicial", author: "Murilo" });
     src.presets.upsertByName("Padrão", ["project", "duration"], "detailed");
@@ -64,7 +70,7 @@ describe("backup", () => {
 
     const json = src.backup.exportBackupJson(new Date("2026-10-15T12:00:00.000Z"));
     const parsed = JSON.parse(json);
-    expect(parsed.formatVersion).toBe(2);
+    expect(parsed.formatVersion).toBe(3);
     expect(typeof parsed.exportedAt).toBe("number");
     expect(parsed.exportedAt).toBeCloseTo(isoToAppleSeconds("2026-10-15T12:00:00.000Z"), 2);
     expect(typeof parsed.sessions[0].workPeriodsData).toBe("string");
@@ -75,7 +81,15 @@ describe("backup", () => {
     dst.backup.importBackupJson(json);
 
     expect(dst.projects.fetchAll(true)).toHaveLength(1);
-    expect(dst.projects.fetchAll(true)[0].name).toBe("WorkLog");
+    expect(dst.projects.fetchAll(true)[0]).toMatchObject({ name: "WorkLog", currencyCode: "USD" });
+    expect(dst.invoices.fetchAll()[0]).toMatchObject({ currencyCode: "USD", totalValue: 125 });
+    delete parsed.invoices[0].currencyCode;
+    expect(() => dst.backup.importBackupJson(JSON.stringify(parsed))).toThrow(/inválidos/);
+    expect(dst.invoices.fetchAll()[0].currencyCode).toBe("USD");
+    parsed.formatVersion = 2;
+    dst.backup.importBackupJson(JSON.stringify(parsed));
+    expect(dst.projects.fetchAll(true)[0].currencyCode).toBe("BRL");
+    expect(dst.invoices.fetchAll()[0].currencyCode).toBe("BRL");
     expect(dst.sessions.fetchAll(null)[0].workPeriods).toHaveLength(2);
     expect(dst.comments.fetchAll()).toHaveLength(1);
     expect(dst.presets.fetchAll()).toHaveLength(1);

@@ -46,6 +46,24 @@ nonisolated struct SyncRecordChange: Sendable {
     var payload: Data?
 }
 
+nonisolated enum SyncCurrencyMetadata {
+    static func currency(for key: SyncRecordKey, payload: Data?) throws -> ProjectCurrency? {
+        let currencyKey: String
+        switch key.entity {
+        case .project, .invoice: currencyKey = "currencyCode"
+        case .session: currencyKey = "projectCurrencyCode"
+        default: return nil
+        }
+        guard let payload,
+              let object = (try? JSONSerialization.jsonObject(with: payload)) as? [String: Any],
+              let code = object[currencyKey] else { return nil }
+        guard let rawValue = code as? String, let currency = ProjectCurrency(rawValue: rawValue) else {
+            throw SyncProtocolError.invalidOperation("moeda inválida")
+        }
+        return currency
+    }
+}
+
 nonisolated struct SyncConflict: Identifiable, Sendable {
     var key: SyncRecordKey
     var versions: [SyncOperation]

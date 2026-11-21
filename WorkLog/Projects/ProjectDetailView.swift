@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ProjectDetailView: View {
     @Environment(\.dependencies) private var dependencies
+    @Environment(PTAXService.self) private var ptax
     let project: Project
     var onProjectChanged: (() -> Void)?
 
@@ -12,12 +13,19 @@ struct ProjectDetailView: View {
     @State private var sessionPendingDeletion: Session?
     @State private var newCommentText: String = ""
     @State private var commentPendingDeletion: Comment?
+    @AppStorage private var displayCurrencyCode: String
+
+    init(project: Project, onProjectChanged: (() -> Void)? = nil) {
+        self.project = project
+        self.onProjectChanged = onProjectChanged
+        _displayCurrencyCode = AppStorage(wrappedValue: "", "project-display-currency.\(project.id.uuidString)")
+    }
 
     var body: some View {
         ScrollView {
             if let viewModel {
                 VStack(alignment: .leading, spacing: 20) {
-                    header(viewModel)
+                    header
                     Divider()
                     timerSection(viewModel)
                     Divider()
@@ -86,7 +94,7 @@ struct ProjectDetailView: View {
         }
     }
 
-    private func header(_ viewModel: ProjectDetailViewModel) -> some View {
+    private var header: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
                 Image(systemName: project.status.symbolName)
@@ -119,13 +127,58 @@ struct ProjectDetailView: View {
                 }
             }
 
-            HStack(spacing: 12) {
-                SummaryCardView(title: "Valor por dia", value: project.dailyRate.currencyFormatted, symbolName: "banknote")
-                SummaryCardView(title: "Tempo acumulado", value: project.totalWorkedSeconds.formattedClock(showSeconds: false), symbolName: "clock")
-                SummaryCardView(title: "Valor acumulado", value: project.totalValue.currencyFormatted, symbolName: "dollarsign.circle")
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .top, spacing: 12) { summaryCards(fillsRowHeight: true) }
+                    .fixedSize(horizontal: false, vertical: true)
+                VStack(alignment: .leading, spacing: 8) { summaryCards(fillsRowHeight: false) }
             }
             .padding(.top, 4)
+
+            Text(exchangeRateStatus)
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
+    }
+
+    private var displayCurrency: Binding<ProjectCurrency> {
+        Binding {
+            ProjectCurrency(rawValue: displayCurrencyCode) ?? project.currency
+        } set: { currency in
+            displayCurrencyCode = currency.rawValue
+        }
+    }
+
+    @ViewBuilder
+    private func summaryCards(fillsRowHeight: Bool) -> some View {
+        ProjectMoneyCard(
+            title: "Valor por dia", symbolName: "banknote", amount: project.dailyRate,
+            currency: project.currency, displayCurrency: displayCurrency.wrappedValue,
+            fillsRowHeight: fillsRowHeight
+        )
+        .frame(minWidth: 138)
+        SummaryCardView(
+            title: "Tempo acumulado",
+            value: project.totalWorkedSeconds.formattedClock(showSeconds: false),
+            symbolName: "clock",
+            fillsRowHeight: fillsRowHeight
+        )
+        .frame(minWidth: 126)
+        ProjectMoneyCard(
+            title: "Valor acumulado", symbolName: "dollarsign.circle", amount: project.totalValue,
+            currency: project.currency, displayCurrency: displayCurrency.wrappedValue,
+            selection: displayCurrency, fillsRowHeight: fillsRowHeight
+        )
+        .frame(minWidth: 185)
+    }
+
+    private var exchangeRateStatus: String {
+        if let date = ptax.snapshot?.bulletinDate {
+            let displayDate = date.split(separator: "-").reversed().joined(separator: "/")
+            let source = ptax.isUsingCachedRates ? "PTAX de venda em cache" : "PTAX de venda"
+            return "\(source) · \(displayDate) · Moeda do projeto: \(project.currency.rawValue)"
+        }
+        let status = ptax.isRefreshing ? "Buscando cotação PTAX…" : "Cotação PTAX indisponível"
+        return "\(status) · Moeda do projeto: \(project.currency.rawValue)"
     }
 
     private func timerSection(_ viewModel: ProjectDetailViewModel) -> some View {

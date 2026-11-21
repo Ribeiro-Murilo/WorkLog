@@ -3,9 +3,15 @@ import Observation
 
 private enum FolderSyncResolutionError: LocalizedError {
     case unavailableParent
+    case incompatibleCurrency
 
     var errorDescription: String? {
-        "Esta versão depende de um projeto excluído ou ainda não disponível. Resolva o conflito do projeto ou restaure-o de um backup antes de recuperar este registro. Você também pode escolher a versão de exclusão."
+        switch self {
+        case .unavailableParent:
+            "Esta versão depende de um projeto excluído ou ainda não disponível. Resolva o conflito do projeto ou restaure-o de um backup antes de recuperar este registro. Você também pode escolher a versão de exclusão."
+        case .incompatibleCurrency:
+            "A versão escolhida tem uma moeda incompatível com a moeda do projeto ou com seus registros de trabalho neste Mac."
+        }
     }
 }
 
@@ -33,6 +39,7 @@ final class FolderSyncService {
     @ObservationIgnored private var state = FolderSyncState()
     @ObservationIgnored private var fileStore: FolderSyncFileStore?
     @ObservationIgnored private var periodicTask: Task<Void, Never>?
+    @ObservationIgnored private var hasPendingCurrencyChanges = false
     private static let bookmarkKey = "WorkLog.folderSync.bookmark"
     private static let pathKey = "WorkLog.folderSync.path"
     private static let deviceKey = "WorkLog.folderSync.deviceID"
@@ -111,6 +118,7 @@ final class FolderSyncService {
             conflicts = state.conflicts
             pendingUploadCount = restored.operations.count
             pendingDependencyCount = 0
+            hasPendingCurrencyChanges = false
             invoiceCollisions = collisions
             lastCheckDate = nil
             status = "Aguardando verificação da pasta"
@@ -138,6 +146,7 @@ final class FolderSyncService {
         errorMessage = nil
         pendingUploadCount = 0
         pendingDependencyCount = 0
+        hasPendingCurrencyChanges = false
         lastCheckDate = nil
         status = "Sincronização desativada"
         userDefaults.removeObject(forKey: Self.bookmarkKey)
@@ -207,7 +216,8 @@ final class FolderSyncService {
             try recordStore.saveState(working, scope: scope)
             state = working
             conflicts = working.conflicts
-            pendingDependencyCount = working.pendingDependencyCount + batch.unavailableFiles + projection.deferred
+            pendingDependencyCount = working.pendingDependencyCount + batch.unavailableFiles + projection.deferred + projection.deferredForCurrency.count
+            hasPendingCurrencyChanges = !projection.deferredForCurrency.isEmpty
             invoiceCollisions = try recordStore.duplicateInvoiceNumbers()
             if before != after { dataRevision += 1 }
             lastCheckDate = .now
@@ -229,19 +239,35 @@ final class FolderSyncService {
         return snapshot
     }
 
-    /// A conflicted or not-yet-delivered project may be absent on a new Mac.
-    /// Keep those child versions in the journal until the parent is available.
+    /// Keep records pending until their project is available in the currency they use.
     private func applicableProjection(_ working: FolderSyncState, snapshot: [SyncRecordKey: Data]) throws
-        -> (changes: [SyncRecordChange], deferred: Int) {
+        -> (changes: [SyncRecordChange], deferred: Int, deferredForCurrency: Set<SyncRecordKey>) {
         let changes = working.resolvedChanges()
         let running = try recordStore.runningSessionKeys()
         let deleted = Set(changes.filter { $0.key.entity == .project && $0.payload == nil }.map { $0.key.id })
-        var available = Set(snapshot.keys.filter { $0.entity == .project }.map(\.id))
-        available.formUnion(changes.filter { $0.key.entity == .project && $0.payload != nil }.map { $0.key.id })
-        available.subtract(deleted)
+        let deletedSessions = Set(changes.filter { $0.key.entity == .session && $0.payload == nil }.map { $0.key.id })
+        let currencyLockedProjects = try recordStore.currencyLockedProjectIDs(removingSessionIDs: deletedSessions)
+        var available: [String: ProjectCurrency] = [:]
+        var deferredForCurrency: Set<SyncRecordKey> = []
+        for (key, data) in snapshot where key.entity == .project {
+            available[key.id] = try SyncCurrencyMetadata.currency(for: key, payload: data) ?? .brl
+        }
+        for change in changes where change.key.entity == .project {
+            let id = change.key.id
+            if let data = change.payload {
+                let currency = try SyncCurrencyMetadata.currency(for: change.key, payload: data) ?? .brl
+                if let currentCurrency = available[id], currentCurrency != currency, currencyLockedProjects.contains(id) {
+                    deferredForCurrency.insert(change.key)
+                } else {
+                    available[id] = currency
+                }
+            } else {
+                available.removeValue(forKey: id)
+            }
+        }
         var applicable: [SyncRecordChange] = []
         var deferred = 0
-        for change in changes {
+        for change in changes where !deferredForCurrency.contains(change.key) {
             if running.contains(change.key) {
                 // Do not reapply the last pause over its resumed local timer. A
                 // different remote version remains pending until the timer pauses.
@@ -249,24 +275,34 @@ final class FolderSyncService {
                 continue
             }
             var parentID: UUID?
+            var sessionCurrency: ProjectCurrency?
             if let data = change.payload {
                 if change.key.entity == .session {
-                    parentID = try SyncPayloadCodec.decode(SessionSyncPayload.self, from: data).projectId
+                    let session = try SyncPayloadCodec.decode(SessionSyncPayload.self, from: data)
+                    parentID = session.projectId
+                    sessionCurrency = session.projectCurrencyCode ?? .brl
                 } else if change.key.entity == .comment {
                     parentID = try SyncPayloadCodec.decode(CommentSyncPayload.self, from: data).projectId
                 }
             }
-            if let parentID, !available.contains(parentID.uuidString), !deleted.contains(parentID.uuidString) {
-                deferred += 1
-            } else {
-                applicable.append(change)
+            if let id = parentID?.uuidString, !deleted.contains(id) {
+                guard let parentCurrency = available[id] else {
+                    deferred += 1
+                    continue
+                }
+                if let sessionCurrency, parentCurrency != sessionCurrency {
+                    deferredForCurrency.insert(change.key)
+                    continue
+                }
             }
+            applicable.append(change)
         }
-        return (applicable, deferred)
+        return (applicable, deferred, deferredForCurrency)
     }
 
     private func updateStatus() {
-        if !conflicts.isEmpty || !invoiceCollisions.isEmpty { status = "Há alterações para revisar" }
+        if hasPendingCurrencyChanges { status = "Registros aguardando resolução da moeda do projeto" }
+        else if !conflicts.isEmpty || !invoiceCollisions.isEmpty { status = "Há alterações para revisar" }
         else if pendingDependencyCount > 0 { status = "Aguardando arquivos relacionados" }
         else if pendingUploadCount > 0 { status = "Há alterações locais aguardando gravação na pasta" }
         else { status = "Pasta verificada neste Mac" }
@@ -289,6 +325,9 @@ final class FolderSyncService {
             _ = try working.resolve(key: conflict.key, payload: payload, deviceID: deviceID, now: .now)
             let before = try localSnapshot(preservingRunningSessionsFrom: working.baseline)
             let projection = try applicableProjection(working, snapshot: before)
+            if projection.deferredForCurrency.contains(conflict.key) {
+                throw FolderSyncResolutionError.incompatibleCurrency
+            }
             try recordStore.apply(projection.changes)
             let after = try localSnapshot(preservingRunningSessionsFrom: working.baseline)
             if payload != nil, [.session, .comment].contains(conflict.key.entity), after[conflict.key] != payload {

@@ -196,7 +196,7 @@ extension Session {
             return ReportRow(id: "\(id.uuidString)#\(index)", projectName: project?.name ?? "—",
                 client: project?.client ?? "—", date: Calendar.current.startOfDay(for: slice.start),
                 startTime: slice.start, endTime: slice.end, durationSeconds: slice.duration,
-                category: category, status: status, estimatedValue: value, note: note,
+                category: category, status: status, estimatedValue: value, currency: project?.currency ?? .brl, note: note,
                 tags: project?.tags ?? [], descriptionText: project?.descriptionText ?? "", sessionCount: 1)
         }
     }

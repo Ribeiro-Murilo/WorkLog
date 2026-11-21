@@ -15,10 +15,11 @@ import {
 } from "lucide-react";
 import {
   formatClock,
-  formatCurrencyBRL,
+  formatCurrency,
   formatDateTimeShort,
   projectColorHex
 } from "../../shared/format";
+import { CURRENCIES, convertCurrency, isCurrencyCode, type CurrencyCode, type PtaxQuote } from "../../shared/currency";
 import { getElapsedDurationSeconds, getLatestActivityMs } from "../../shared/periods";
 import {
   PROJECT_CATEGORY_LABELS,
@@ -32,6 +33,50 @@ import { SessionRow } from "../components/SessionRow";
 import { ConfirmModal } from "../modals/ConfirmModal";
 import { ProjectFormModal } from "../modals/ProjectFormModal";
 import { SessionFormModal } from "../modals/SessionFormModal";
+
+interface CurrencyCardProps {
+  label: React.ReactNode;
+  amount: number;
+  nativeCurrency: CurrencyCode;
+  displayCurrency: CurrencyCode;
+  quote: PtaxQuote | null;
+  onCurrencyChange?: (currency: CurrencyCode) => void;
+}
+
+function CurrencyCard({ label, amount, nativeCurrency, displayCurrency, quote, onCurrencyChange }: CurrencyCardProps) {
+  function formatAmount(currency: CurrencyCode) {
+    const value = convertCurrency(amount, nativeCurrency, currency, quote);
+    if (value === null) return `${currency} —`;
+    const formatted = formatCurrency(value, currency);
+    return currency !== nativeCurrency && amount !== 0 ? `≈ ${formatted}` : formatted;
+  }
+
+  return (
+    <div className="card project-currency-card">
+      <div className="project-currency-header">
+        <div className="summary-card-label">{label}</div>
+        {onCurrencyChange && (
+          <select
+            className="select project-currency-select"
+            aria-label="Moeda de exibição"
+            value={displayCurrency}
+            onChange={(event) => onCurrencyChange(event.target.value as CurrencyCode)}
+          >
+            {CURRENCIES.map((currency) => <option key={currency}>{currency}</option>)}
+          </select>
+        )}
+      </div>
+      <div className="summary-card-value project-currency-primary tabular">
+        {formatAmount(displayCurrency)}
+      </div>
+      <div className="project-currency-alternatives small muted tabular">
+        {CURRENCIES.filter((currency) => currency !== displayCurrency).map((currency) => (
+          <span key={currency}>{formatAmount(currency)}</span>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 interface ProjectDetailViewProps {
   project: ProjectWithStats;
@@ -52,6 +97,27 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
   const [commentText, setCommentText] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [nowMs, setNowMs] = useState(() => Date.now());
+
+  const currencyPreferenceKey = `worklog:display-currency:${project.id}`;
+  const [preferredCurrency, setPreferredCurrency] = useState<CurrencyCode | null>(() => {
+    try {
+      const saved = localStorage.getItem(currencyPreferenceKey);
+      return isCurrencyCode(saved) ? saved : null;
+    } catch {
+      return null;
+    }
+  });
+  const displayCurrency = preferredCurrency ?? project.currencyCode;
+  const { quote, unavailable } = snapshot.ptax;
+  const quoteDate = quote?.quoteDate.split("-").reverse().join("/");
+  const selectDisplayCurrency = (currency: CurrencyCode) => {
+    setPreferredCurrency(currency);
+    try {
+      localStorage.setItem(currencyPreferenceKey, currency);
+    } catch {
+      // A seleção ainda vale enquanto o detalhe estiver aberto.
+    }
+  };
 
   const projectSessions = useMemo(
     () => snapshot.sessions.filter((s) => s.projectId === project.id),
@@ -154,32 +220,39 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
           </div>
         )}
 
-        <div className="summary-grid" style={{ marginBottom: 0, marginTop: 10 }}>
+        <div className="summary-grid project-summary-grid">
+          <CurrencyCard
+            label={<><Banknote size={14} /> Valor por dia</>}
+            amount={project.dailyRate}
+            nativeCurrency={project.currencyCode}
+            displayCurrency={displayCurrency}
+            quote={quote}
+          />
           <div className="card" style={{ background: "var(--bg-subtle)" }}>
-            <div className="summary-card-label">
-              <Banknote size={14} /> Valor por dia
-            </div>
-            <div className="summary-card-value tabular">
-              {formatCurrencyBRL(project.dailyRate)}
-            </div>
-          </div>
-          <div className="card" style={{ background: "var(--bg-subtle)" }}>
-            <div className="summary-card-label">
-              <Clock size={14} /> Tempo acumulado
+            <div className="project-currency-header">
+              <div className="summary-card-label">
+                <Clock size={14} /> Tempo acumulado
+              </div>
             </div>
             <div className="summary-card-value tabular">
               {formatClock(project.totalWorkedSeconds, false)}
             </div>
           </div>
-          <div className="card" style={{ background: "var(--bg-subtle)" }}>
-            <div className="summary-card-label">
-              <CircleDollarSign size={14} /> Valor acumulado
-            </div>
-            <div className="summary-card-value tabular">
-              {formatCurrencyBRL(project.totalValue)}
-            </div>
-          </div>
+          <CurrencyCard
+            label={<><CircleDollarSign size={14} /> Valor acumulado</>}
+            amount={project.totalValue}
+            nativeCurrency={project.currencyCode}
+            displayCurrency={displayCurrency}
+            quote={quote}
+            onCurrencyChange={selectDisplayCurrency}
+          />
         </div>
+        <p className="project-currency-note small muted" aria-live="polite">
+          {quoteDate
+            ? `${unavailable ? "PTAX de venda em cache" : "PTAX de venda"} · ${quoteDate}`
+            : "Cotação PTAX indisponível"}
+          {" · Moeda do projeto: "}{project.currencyCode}
+        </p>
       </div>
 
       <div className="card" style={{ marginBottom: 16 }}>
@@ -350,6 +423,7 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
       {showingEditForm && (
         <ProjectFormModal
           project={project}
+          currencyLocked={projectSessions.length > 0}
           onClose={() => setShowingEditForm(false)}
           onSaved={() => setErrorMessage(null)}
         />

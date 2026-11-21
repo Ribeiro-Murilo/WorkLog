@@ -18,10 +18,11 @@ final class BillingViewModel {
     var selectedClient: String? {
         didSet { generatePreview() }
     }
+    var selectedCurrency: ProjectCurrency = .brl
     var notes: String = ""
 
     private(set) var availableClients: [String] = []
-    private(set) var previewLineItems: [InvoiceLineItem] = []
+    private var lineItemsByCurrency: [ProjectCurrency: [InvoiceLineItem]] = [:]
     private(set) var invoices: [Invoice] = []
     var errorMessage: String?
 
@@ -44,6 +45,14 @@ final class BillingViewModel {
 
     var previewTotalValue: Decimal {
         previewLineItems.reduce(Decimal(0)) { $0 + $1.value }
+    }
+
+    var availableCurrencies: [ProjectCurrency] {
+        ProjectCurrency.allCases.filter { lineItemsByCurrency[$0] != nil }
+    }
+
+    var previewLineItems: [InvoiceLineItem] {
+        lineItemsByCurrency[selectedCurrency] ?? []
     }
 
     var previewTotalDuration: TimeInterval {
@@ -72,15 +81,22 @@ final class BillingViewModel {
 
     func generatePreview() {
         guard let client = selectedClient else {
-            previewLineItems = []
+            lineItemsByCurrency = [:]
             return
         }
         do {
             let interval = period.dateInterval(customStart: customStart, customEnd: customEnd)
             let sessions = try sessionRepository.fetchSessions(in: interval)
                 .filter { $0.project?.client == client }
-            previewLineItems = Self.groupByProjectAndDay(sessions, in: interval)
+            let sessionsByCurrency = Dictionary(grouping: sessions) { $0.project?.currency ?? .brl }
+            lineItemsByCurrency = sessionsByCurrency
+                .mapValues { Self.groupByProjectAndDay($0, in: interval) }
+                .filter { !$0.value.isEmpty }
+            if lineItemsByCurrency[selectedCurrency] == nil, let first = availableCurrencies.first {
+                selectedCurrency = first
+            }
         } catch {
+            lineItemsByCurrency = [:]
             errorMessage = error.localizedDescription
         }
     }
@@ -104,19 +120,23 @@ final class BillingViewModel {
         }.sorted { $0.date < $1.date }
     }
 
-    /// Período/cliente atuais já têm uma fatura emitida com intervalo sobreposto.
+    /// Verifica a sobreposição para o cliente, a moeda e o período selecionados.
     var periodOverlapsExistingInvoice: Bool {
         guard let client = selectedClient else { return false }
         let interval = period.dateInterval(customStart: customStart, customEnd: customEnd)
-        return (try? invoiceRepository.hasOverlap(client: client, start: interval.start, end: interval.end, excluding: nil)) ?? false
+        return (try? invoiceRepository.hasOverlap(
+            client: client, start: interval.start, end: interval.end, excluding: nil, currency: selectedCurrency
+        )) ?? false
     }
 
     func generateInvoice() {
         guard let client = selectedClient, !previewLineItems.isEmpty else { return }
         do {
             let interval = period.dateInterval(customStart: customStart, customEnd: customEnd)
-            guard try !invoiceRepository.hasOverlap(client: client, start: interval.start, end: interval.end, excluding: nil) else {
-                errorMessage = "Já existe uma fatura para \(client) com período sobreposto a este."
+            guard try !invoiceRepository.hasOverlap(
+                client: client, start: interval.start, end: interval.end, excluding: nil, currency: selectedCurrency
+            ) else {
+                errorMessage = "Já existe uma fatura para \(client) em \(selectedCurrency.rawValue) com período sobreposto a este."
                 return
             }
             let number = try invoiceRepository.nextNumber()
@@ -126,6 +146,7 @@ final class BillingViewModel {
                 periodStart: interval.start,
                 periodEnd: interval.end,
                 lineItems: previewLineItems,
+                currency: selectedCurrency,
                 notes: notes
             )
             try invoiceRepository.insert(invoice)
@@ -168,6 +189,7 @@ final class BillingViewModel {
             lineItems: invoice.lineItems,
             totalDurationSeconds: invoice.totalDurationSeconds,
             totalValue: invoice.totalValue,
+            currency: invoice.currency,
             notes: invoice.notes
         )
         try exportService.exportInvoice(document, to: url, includeLogo: settings.includeLogoInPDF)
@@ -175,7 +197,7 @@ final class BillingViewModel {
 
     #if DEBUG
     func setPreviewLineItemsForTesting(_ value: [InvoiceLineItem]) {
-        previewLineItems = value
+        lineItemsByCurrency[selectedCurrency] = value
     }
     #endif
 }

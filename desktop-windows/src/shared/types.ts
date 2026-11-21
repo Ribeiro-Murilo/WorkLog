@@ -1,5 +1,7 @@
 export const STANDARD_WORKDAY_HOURS = 8;
 
+import type { CurrencyCode, PtaxState } from "./currency";
+
 export type ProjectCategory = "work" | "personal";
 export type ProjectStatus = "active" | "inProgress" | "blocked" | "ready";
 export type SessionStatus = "running" | "paused" | "completed";
@@ -121,6 +123,7 @@ export interface Project {
   name: string;
   client: string;
   dailyRate: number;
+  currencyCode: CurrencyCode;
   category: ProjectCategory;
   tags: string[];
   descriptionText: string;
@@ -198,6 +201,7 @@ export interface Invoice {
   lineItems: InvoiceLineItem[];
   totalDurationSeconds: number;
   totalValue: number;
+  currencyCode: CurrencyCode;
   status: InvoiceStatus;
   notes: string;
   createdAt: string;
@@ -292,6 +296,7 @@ export interface ReportRow {
   category: ProjectCategory;
   status: SessionStatus;
   estimatedValue: number;
+  currencyCode: CurrencyCode;
   note: string;
   tags: string[];
   descriptionText: string;
@@ -301,7 +306,7 @@ export interface ReportRow {
 export interface ReportResult {
   rows: ReportRow[];
   totalDuration: number;
-  totalValue: number;
+  totalsByCurrency: Partial<Record<CurrencyCode, number>>;
   columns: ReportColumn[];
   periodLabel: string;
 }
@@ -313,6 +318,7 @@ export interface BillingPreview {
   lineItems: InvoiceLineItem[];
   totalDurationSeconds: number;
   totalValue: number;
+  currencyCode: CurrencyCode;
   overlapsExistingInvoice: boolean;
 }
 
@@ -332,6 +338,7 @@ export interface ProjectInput {
   name: string;
   client: string;
   dailyRate: number;
+  currencyCode?: CurrencyCode;
   category: ProjectCategory;
   tags: string[];
   descriptionText: string;
@@ -362,6 +369,7 @@ export interface AppSnapshot {
   displays: DisplayInfo[];
   notch: NotchUIState;
   appVersion: string;
+  ptax: PtaxState;
 }
 
 export type DashboardSection = "summary" | "projects" | "reports" | "billing" | "settings";

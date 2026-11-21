@@ -86,7 +86,7 @@ enum ReportColumn: String, CaseIterable, Identifiable, Codable {
         case .status:
             return row.status.displayName
         case .value:
-            return row.estimatedValue.currencyFormatted
+            return row.estimatedValue.formatted(currency: row.currency, showCode: true)
         case .note:
             return row.note
         case .tags:

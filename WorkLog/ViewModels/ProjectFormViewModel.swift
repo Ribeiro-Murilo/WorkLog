@@ -7,6 +7,7 @@ final class ProjectFormViewModel {
     var name: String = ""
     var client: String = ""
     var dailyRateText: String = ""
+    var currency: ProjectCurrency = .brl
     var category: ProjectCategory = .work
     var tagsText: String = ""
     var descriptionText: String = ""
@@ -19,6 +20,7 @@ final class ProjectFormViewModel {
     private let validationService: ValidationServiceProtocol
 
     var isEditing: Bool { editingProject != nil }
+    var canChangeCurrency: Bool { editingProject?.canChangeCurrency ?? true }
 
     var tags: [String] {
         tagsText
@@ -44,6 +46,7 @@ final class ProjectFormViewModel {
         name = project.name
         client = project.client
         dailyRateText = "\(project.dailyRate)"
+        currency = project.currency
         category = project.category
         tagsText = project.tags.joined(separator: ", ")
         descriptionText = project.descriptionText
@@ -66,6 +69,9 @@ final class ProjectFormViewModel {
             guard !isDuplicate else { throw ValidationError.duplicateProject }
 
             if let project = editingProject {
+                guard project.canChangeCurrency || project.currency == currency else {
+                    throw ProjectRepositoryError.currencyLocked
+                }
                 project.name = name
                 project.client = client
                 project.dailyRate = rate
@@ -73,12 +79,13 @@ final class ProjectFormViewModel {
                 project.tags = tags
                 project.descriptionText = descriptionText
                 project.status = status
-                try repository.update(project)
+                try repository.update(project, currency: currency)
             } else {
                 let project = Project(
                     name: name,
                     client: client,
                     dailyRate: rate,
+                    currency: currency,
                     category: category,
                     tags: tags,
                     descriptionText: descriptionText,

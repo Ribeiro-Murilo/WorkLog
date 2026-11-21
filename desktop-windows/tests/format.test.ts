@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   formatClock,
   formatCompactTimer,
-  formatCurrencyBRL,
+  formatCurrency,
   formatInvoiceNumber,
   parseBrazilianDecimal,
   projectColorHex
@@ -26,7 +26,7 @@ describe("format", () => {
   });
 
   it("formata moeda BRL e números de fatura", () => {
-    expect(formatCurrencyBRL(1250.5)).toContain("1.250,50");
+    expect(formatCurrency(1250.5, "BRL")).toContain("1.250,50");
     expect(formatInvoiceNumber(1)).toBe("FAT-0001");
     expect(formatInvoiceNumber(42)).toBe("FAT-0042");
   });

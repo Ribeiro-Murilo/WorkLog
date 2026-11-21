@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
+import { validateCurrencyCode, type CurrencyCode } from "../../src/shared/currency";
 import type { Project, ProjectCategory, ProjectInput, ProjectStatus } from "../../src/shared/types";
 import { VALIDATION_MESSAGES, ValidationError, validateProjectFields } from "../../src/shared/validation";
 
@@ -8,6 +9,7 @@ interface ProjectRow {
   name: string;
   client: string;
   daily_rate: number;
+  currency_code: CurrencyCode;
   category: string;
   tags_json: string;
   description_text: string;
@@ -31,6 +33,7 @@ function mapProject(row: ProjectRow): Project {
     name: row.name,
     client: row.client,
     dailyRate: Number(row.daily_rate) || 0,
+    currencyCode: row.currency_code,
     category: (row.category === "personal" ? "personal" : "work") as ProjectCategory,
     tags,
     descriptionText: row.description_text,
@@ -98,6 +101,7 @@ export class ProjectRepository {
       name: input.name,
       client: input.client,
       dailyRate: input.dailyRate,
+      currencyCode: validateCurrencyCode(input.currencyCode === undefined ? "BRL" : input.currencyCode),
       category: input.category,
       tags: input.tags,
       descriptionText: input.descriptionText,
@@ -111,15 +115,16 @@ export class ProjectRepository {
     this.db
       .prepare(
         `INSERT INTO projects (
-          id, name, client, daily_rate, category, tags_json, description_text,
+          id, name, client, daily_rate, currency_code, category, tags_json, description_text,
           status, is_archived, is_favorite, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .run(
         project.id,
         project.name,
         project.client,
         project.dailyRate,
+        project.currencyCode,
         project.category,
         JSON.stringify(project.tags),
         project.descriptionText,
@@ -139,6 +144,12 @@ export class ProjectRepository {
     validateProjectFields(input.name, input.client, input.dailyRate);
     const trimmedName = input.name.trim();
     const trimmedClient = input.client.trim();
+    const currencyCode = validateCurrencyCode(input.currencyCode === undefined ? existing.currencyCode : input.currencyCode);
+    if (currencyCode !== existing.currencyCode && this.db.prepare(
+      "SELECT 1 FROM sessions WHERE project_id = ? LIMIT 1"
+    ).get(id)) {
+      throw new ValidationError("A moeda do projeto fica bloqueada enquanto houver sessões vinculadas.");
+    }
     if (this.isDuplicate(trimmedName, trimmedClient, id)) {
       throw new ValidationError(VALIDATION_MESSAGES.duplicateProject);
     }
@@ -147,7 +158,7 @@ export class ProjectRepository {
     this.db
       .prepare(
         `UPDATE projects SET
-          name = ?, client = ?, daily_rate = ?, category = ?, tags_json = ?,
+          name = ?, client = ?, daily_rate = ?, currency_code = ?, category = ?, tags_json = ?,
           description_text = ?, status = ?, updated_at = ?
         WHERE id = ?`
       )
@@ -155,6 +166,7 @@ export class ProjectRepository {
         input.name,
         input.client,
         input.dailyRate,
+        currencyCode,
         input.category,
         JSON.stringify(input.tags),
         input.descriptionText,
@@ -170,13 +182,14 @@ export class ProjectRepository {
     this.db
       .prepare(
         `INSERT INTO projects (
-          id, name, client, daily_rate, category, tags_json, description_text,
+          id, name, client, daily_rate, currency_code, category, tags_json, description_text,
           status, is_archived, is_favorite, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(id) DO UPDATE SET
           name = excluded.name,
           client = excluded.client,
           daily_rate = excluded.daily_rate,
+          currency_code = excluded.currency_code,
           category = excluded.category,
           tags_json = excluded.tags_json,
           description_text = excluded.description_text,
@@ -191,6 +204,7 @@ export class ProjectRepository {
         project.name,
         project.client,
         project.dailyRate,
+        project.currencyCode,
         project.category,
         JSON.stringify(project.tags),
         project.descriptionText,

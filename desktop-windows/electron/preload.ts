@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer } from "electron";
+import type { CurrencyCode } from "../src/shared/currency";
 import type {
   AppSettings,
   AppSnapshot,
@@ -66,12 +67,14 @@ export interface WorkLogBridge {
     preview: (params: {
       client: string | null;
       period: ReportPeriod;
+      currencyCode: CurrencyCode;
       customStart: string;
       customEnd: string;
     }) => Promise<BillingPreview>;
     generateInvoice: (params: {
       client: string;
       period: ReportPeriod;
+      currencyCode: CurrencyCode;
       customStart: string;
       customEnd: string;
       notes: string;

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { X } from "lucide-react";
+import { CURRENCIES, type CurrencyCode } from "../../shared/currency";
 import { parseBrazilianDecimal } from "../../shared/format";
 import {
   PROJECT_CATEGORY_LABELS,
@@ -11,12 +12,14 @@ import {
 
 interface ProjectFormModalProps {
   project: Project | null;
+  currencyLocked?: boolean;
   onClose: () => void;
   onSaved: () => void;
 }
 
 export const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
   project,
+  currencyLocked = false,
   onClose,
   onSaved
 }) => {
@@ -25,6 +28,7 @@ export const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
   const [dailyRateText, setDailyRateText] = useState(
     project ? String(project.dailyRate).replace(".", ",") : ""
   );
+  const [currencyCode, setCurrencyCode] = useState<CurrencyCode>(project?.currencyCode ?? "BRL");
   const [category, setCategory] = useState<ProjectCategory>(project?.category ?? "work");
   const [status, setStatus] = useState<ProjectStatus>(project?.status ?? "active");
   const [tagsText, setTagsText] = useState(project ? project.tags.join(", ") : "");
@@ -47,6 +51,7 @@ export const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
         name,
         client,
         dailyRate: rate,
+        currencyCode: currencyLocked ? project?.currencyCode : currencyCode,
         category,
         tags,
         descriptionText,
@@ -99,15 +104,32 @@ export const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
               />
             </div>
 
-            <div className="field-group">
-              <label className="field-label">Valor por dia (R$)</label>
-              <input
-                className="input"
-                type="text"
-                placeholder="0,00"
-                value={dailyRateText}
-                onChange={(e) => setDailyRateText(e.target.value)}
-              />
+            <div className="two-col-grid">
+              <div className="field-group">
+                <label className="field-label" htmlFor="project-daily-rate">Valor por dia</label>
+                <input
+                  id="project-daily-rate"
+                  className="input"
+                  type="text"
+                  placeholder="0,00"
+                  value={dailyRateText}
+                  onChange={(e) => setDailyRateText(e.target.value)}
+                />
+              </div>
+              <div className="field-group">
+                <label className="field-label" htmlFor="project-currency">Moeda do projeto</label>
+                <select
+                  id="project-currency"
+                  className="select"
+                  value={currencyLocked ? project?.currencyCode : currencyCode}
+                  disabled={currencyLocked}
+                  aria-describedby={currencyLocked ? "project-currency-lock" : undefined}
+                  onChange={(e) => setCurrencyCode(e.target.value as CurrencyCode)}
+                >
+                  {CURRENCIES.map((currency) => <option key={currency}>{currency}</option>)}
+                </select>
+                {currencyLocked && <span id="project-currency-lock" className="small muted">Há sessões vinculadas.</span>}
+              </div>
             </div>
 
             <div className="two-col-grid" style={{ marginBottom: 0 }}>

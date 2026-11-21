@@ -24,6 +24,28 @@ struct ProjectRepositoryTests {
         #expect(try !repo.isDuplicate(name: "Other", client: "Acme", excluding: nil))
     }
 
+    @Test(arguments: [SessionStatus.running, .completed])
+    func currencyIsLockedWhileAnySessionExists(_ status: SessionStatus) throws {
+        let context = makeInMemoryContext()
+        let repo: any ProjectRepositoryProtocol = ProjectRepository(modelContext: context)
+        let project = Project(name: "Site", client: "Acme", dailyRate: 500, category: .work)
+        try repo.insert(project)
+        try repo.update(project, currency: .usd)
+        let session = Session(project: project, date: .now, startTime: .now, category: .work, status: status)
+        context.insert(session)
+        try context.save()
+
+        #expect(!project.canChangeCurrency)
+        #expect(throws: ProjectRepositoryError.currencyLocked) { try repo.update(project, currency: .eur) }
+        #expect(project.currency == .usd)
+
+        context.delete(session)
+        try context.save()
+        #expect(project.canChangeCurrency)
+        try repo.update(project, currency: .eur)
+        #expect(try repo.fetch(by: project.id)?.currency == .eur)
+    }
+
     @Test func archiveExcludesFromDefaultFetch() throws {
         let repo = ProjectRepository(modelContext: makeInMemoryContext())
         let project = Project(name: "Site", client: "Acme", dailyRate: 500, category: .work)

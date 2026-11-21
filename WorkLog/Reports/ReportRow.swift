@@ -13,6 +13,7 @@ struct ReportRow: Identifiable {
     let category: ProjectCategory
     let status: SessionStatus
     let estimatedValue: Decimal
+    let currency: ProjectCurrency
     let note: String
     let tags: [String]
     let descriptionText: String
@@ -29,6 +30,7 @@ struct ReportRow: Identifiable {
         self.category = session.category
         self.status = session.status
         self.estimatedValue = session.estimatedValue
+        self.currency = session.project?.currency ?? .brl
         self.note = session.note
         self.tags = session.project?.tags ?? []
         self.descriptionText = session.project?.descriptionText ?? ""
@@ -46,6 +48,7 @@ struct ReportRow: Identifiable {
         category: ProjectCategory,
         status: SessionStatus,
         estimatedValue: Decimal,
+        currency: ProjectCurrency,
         note: String,
         tags: [String],
         descriptionText: String,
@@ -61,6 +64,7 @@ struct ReportRow: Identifiable {
         self.category = category
         self.status = status
         self.estimatedValue = estimatedValue
+        self.currency = currency
         self.note = note
         self.tags = tags
         self.descriptionText = descriptionText

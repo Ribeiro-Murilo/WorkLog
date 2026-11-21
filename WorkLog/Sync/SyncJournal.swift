@@ -65,8 +65,8 @@ nonisolated struct FolderSyncState: Codable, Sendable {
             } else {
                 parents = heads
             }
-            additions.append(SyncOperation(deviceID: deviceID, key: key,
-                                           parents: parents.map(\.id), payload: snapshot[key], timestamp: now))
+            additions.append(try Self.makeOperation(key: key, payload: snapshot[key], parents: parents,
+                                                    deviceID: deviceID, now: now))
         }
         // Validation and mutation are atomic even if one changed record is blocked.
         try ingest(additions)
@@ -87,9 +87,8 @@ nonisolated struct FolderSyncState: Codable, Sendable {
     mutating func resolve(key: SyncRecordKey, payload: Data?, deviceID: UUID, now: Date) throws -> SyncOperation {
         let graph = JournalGraph(operations)
         guard !graph.incompleteKeys.contains(key) else { throw SyncProtocolError.missingDependencies(key) }
-        let operation = SyncOperation(deviceID: deviceID, key: key,
-                                      parents: graph.heads[key, default: []].map(\.id),
-                                      payload: payload, timestamp: now)
+        let operation = try Self.makeOperation(key: key, payload: payload, parents: graph.heads[key, default: []],
+                                               deviceID: deviceID, now: now)
         try ingest([operation])
         baseline[key] = payload
         return operation
@@ -117,8 +116,24 @@ nonisolated struct FolderSyncState: Codable, Sendable {
         return lhs.id < rhs.id
     }
 
+    private static func makeOperation(key: SyncRecordKey, payload: Data?, parents: [SyncOperation],
+                                      deviceID: UUID, now: Date) throws -> SyncOperation {
+        let version = try payloadVersion(key: key, payload: payload)
+        return SyncOperation(formatVersion: max(version, parents.map(\.formatVersion).max() ?? 1),
+                             deviceID: deviceID, key: key, parents: parents.map(\.id), payload: payload, timestamp: now)
+    }
+
+    /// An older app must stop before projecting amounts or work into a project in a foreign currency.
+    private static func payloadVersion(key: SyncRecordKey, payload: Data?) throws -> Int {
+        let currency = try SyncCurrencyMetadata.currency(for: key, payload: payload) ?? .brl
+        return currency == .brl ? 1 : 2
+    }
+
     private static func validate(_ operation: SyncOperation) throws {
-        guard operation.formatVersion == 1 else { throw SyncProtocolError.unsupportedVersion(operation.formatVersion) }
+        guard (1...2).contains(operation.formatVersion) else { throw SyncProtocolError.unsupportedVersion(operation.formatVersion) }
+        guard try payloadVersion(key: operation.key, payload: operation.payload) <= operation.formatVersion else {
+            throw SyncProtocolError.invalidOperation("a moeda exige um formato de sincronização mais recente")
+        }
         guard !operation.key.id.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             throw SyncProtocolError.invalidOperation("identificador de registro vazio")
         }

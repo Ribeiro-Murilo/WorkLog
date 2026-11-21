@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Archive, Briefcase, Folder, Plus, Search, Star, Trash2, User } from "lucide-react";
-import { formatClock, formatCurrencyBRL, projectColorHex } from "../../shared/format";
+import { formatClock, formatCurrency, projectColorHex } from "../../shared/format";
 import {
   PROJECT_CATEGORY_LABELS,
   PROJECT_SORT_LABELS,
@@ -83,6 +83,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   if (selectedProject) {
     return (
       <ProjectDetailView
+        key={selectedProject.id}
         project={selectedProject}
         snapshot={snapshot}
         onBack={() => setSelectedProjectId(null)}
@@ -220,7 +221,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                     >
                       <span className="small muted tabular" style={{ marginRight: 6 }}>
                         {formatClock(project.totalWorkedSeconds, false)} •{" "}
-                        {formatCurrencyBRL(project.totalValue)}
+                        {formatCurrency(project.totalValue, project.currencyCode, true)}
                       </span>
                       <button
                         type="button"

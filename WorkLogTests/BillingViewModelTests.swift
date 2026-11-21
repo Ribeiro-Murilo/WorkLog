@@ -127,4 +127,37 @@ struct BillingViewModelTests {
 
         #expect(vm.invoices.isEmpty)
     }
+
+    @Test func independentCurrenciesCanBeInvoicedForTheSameClientAndPeriod() throws {
+        let context = makeInMemoryContext()
+        let projects = ProjectRepository(modelContext: context)
+        let sessions = SessionRepository(modelContext: context)
+        let settings = SettingsRepository(modelContext: context)
+        let date = Calendar.current.startOfDay(for: .now).addingTimeInterval(3600)
+        let dollar = Project(name: "Dólar", client: "Cliente", dailyRate: 800, currency: .usd, category: .work)
+        let euro = Project(name: "Euro", client: "Cliente", dailyRate: 400, currency: .eur, category: .work)
+        for project in [dollar, euro] {
+            try projects.insert(project)
+            try sessions.insert(makeSession(project: project, date: date, durationSeconds: 3600))
+        }
+        let vm = BillingViewModel(
+            projectRepository: projects,
+            sessionRepository: sessions,
+            invoiceRepository: InvoiceRepository(modelContext: context, settingsRepository: settings),
+            settingsRepository: settings,
+            exportService: ExportService()
+        )
+        vm.period = .today
+
+        vm.selectedCurrency = .usd
+        vm.generateInvoice()
+        #expect(vm.periodOverlapsExistingInvoice)
+        vm.selectedCurrency = .eur
+        #expect(!vm.periodOverlapsExistingInvoice)
+        vm.generateInvoice()
+
+        #expect(vm.invoices.map(\.currency) == [.eur, .usd])
+        #expect(vm.invoices.map(\.totalValue) == [50, 100])
+        #expect(vm.invoices.map { $0.lineItems.map(\.projectName) } == [["Euro"], ["Dólar"]])
+    }
 }

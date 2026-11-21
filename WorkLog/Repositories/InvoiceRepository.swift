@@ -5,10 +5,16 @@ import SwiftData
 protocol InvoiceRepositoryProtocol {
     func fetchAll() throws -> [Invoice]
     func nextNumber() throws -> Int
-    func hasOverlap(client: String, start: Date, end: Date, excluding id: UUID?) throws -> Bool
+    func hasOverlap(client: String, start: Date, end: Date, excluding id: UUID?, currency: ProjectCurrency) throws -> Bool
     func insert(_ invoice: Invoice) throws
     func update(_ invoice: Invoice) throws
     func delete(_ invoice: Invoice) throws
+}
+
+extension InvoiceRepositoryProtocol {
+    func hasOverlap(client: String, start: Date, end: Date, excluding id: UUID?) throws -> Bool {
+        try hasOverlap(client: client, start: start, end: end, excluding: id, currency: .brl)
+    }
 }
 
 @MainActor
@@ -38,11 +44,13 @@ final class InvoiceRepository: InvoiceRepositoryProtocol {
         return next
     }
 
-    /// Verifica se já existe fatura do mesmo cliente com período sobreposto.
-    func hasOverlap(client: String, start: Date, end: Date, excluding id: UUID?) throws -> Bool {
+    /// Verifica se há uma fatura sobreposta para o mesmo cliente e moeda.
+    func hasOverlap(client: String, start: Date, end: Date, excluding id: UUID?, currency: ProjectCurrency) throws -> Bool {
+        let currencyCode = currency.rawValue
         let descriptor = FetchDescriptor<Invoice>(
             predicate: #Predicate { invoice in
-                invoice.client == client && invoice.periodStart < end && invoice.periodEnd > start
+                invoice.client == client && invoice.currencyCode == currencyCode &&
+                    invoice.periodStart < end && invoice.periodEnd > start
             }
         )
         let matches = try modelContext.fetch(descriptor)

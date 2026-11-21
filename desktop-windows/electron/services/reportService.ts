@@ -1,4 +1,5 @@
-import { formatClock, formatCurrencyBRL, formatShortDate, formatShortTime } from "../../src/shared/format";
+import { CURRENCIES } from "../../src/shared/currency";
+import { formatClock, formatCurrency, formatCurrencyTotals, formatShortDate, formatShortTime } from "../../src/shared/format";
 import { resolveReportPeriod } from "../../src/shared/periods";
 import {
   DEFAULT_REPORT_COLUMNS,
@@ -73,10 +74,15 @@ export class ReportService {
     const columns: ReportColumn[] =
       filter.selectedColumns.length > 0 ? filter.selectedColumns : DEFAULT_REPORT_COLUMNS;
 
+    const totalsByCurrency: ReportResult["totalsByCurrency"] = {};
+    for (const row of detailedRows) {
+      totalsByCurrency[row.currencyCode] = (totalsByCurrency[row.currencyCode] ?? 0) + row.estimatedValue;
+    }
+
     return {
       rows,
       totalDuration: detailedRows.reduce((acc, r) => acc + r.durationSeconds, 0),
-      totalValue: detailedRows.reduce((acc, r) => acc + r.estimatedValue, 0),
+      totalsByCurrency,
       columns,
       periodLabel: REPORT_PERIOD_LABELS[filter.period]
     };
@@ -99,21 +105,40 @@ export class ReportService {
     const tableRows = result.rows.map((row) =>
       result.columns.map((col) => formatReportColumnValue(col, row, settings.timeFormat))
     );
+    const valueColumn = result.columns.indexOf("value");
+    const subtotalRows: string[][] = [];
+    if (valueColumn >= 0) {
+      const labelColumn = result.columns.findIndex((col) => col !== "value");
+      for (const currency of CURRENCIES) {
+        const total = result.totalsByCurrency[currency];
+        if (total === undefined) continue;
+        const cells: string[] = Array(result.columns.length).fill("");
+        const value = formatCurrency(total, currency, true);
+        if (labelColumn >= 0) {
+          cells[labelColumn] = "Subtotal";
+          cells[valueColumn] = value;
+        } else {
+          cells[valueColumn] = `Subtotal ${value}`;
+        }
+        subtotalRows.push(cells);
+      }
+    }
+    const exportRows = [...tableRows, ...subtotalRows];
     const title = `Relatório — ${result.periodLabel}`;
     const nowIso = referenceDate.toISOString();
     const generatedAtText = `${formatShortDate(nowIso)} às ${formatShortTime(nowIso, settings.timeFormat)}`;
 
     return {
       title,
-      csv: buildCsvContent(headers, tableRows),
-      excelXml: buildExcelXmlContent(title, headers, tableRows),
+      csv: buildCsvContent(headers, exportRows),
+      excelXml: buildExcelXmlContent(title, headers, exportRows),
       pdfHtml: buildReportPdfHtml({
         title,
         generatedAtText,
         columns: metas,
         rows: tableRows,
         totalDurationText: formatClock(result.totalDuration, false),
-        totalValueText: formatCurrencyBRL(result.totalValue),
+        totalValueText: valueColumn >= 0 ? formatCurrencyTotals(result.totalsByCurrency) : null,
         logoDataUrl: settings.includeLogoInPDF ? logoDataUrl : null
       })
     };

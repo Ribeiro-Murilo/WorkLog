@@ -13,6 +13,7 @@ export function openDatabase(dbPath: string): DatabaseSync {
       name TEXT NOT NULL,
       client TEXT NOT NULL,
       daily_rate REAL NOT NULL DEFAULT 0,
+      currency_code TEXT NOT NULL DEFAULT 'BRL' CHECK (currency_code IN ('BRL', 'USD', 'EUR')),
       category TEXT NOT NULL DEFAULT 'work',
       tags_json TEXT NOT NULL DEFAULT '[]',
       description_text TEXT NOT NULL DEFAULT '',
@@ -64,6 +65,7 @@ export function openDatabase(dbPath: string): DatabaseSync {
       period_end TEXT NOT NULL,
       line_items_json TEXT NOT NULL DEFAULT '[]',
       total_value REAL NOT NULL DEFAULT 0,
+      currency_code TEXT NOT NULL DEFAULT 'BRL' CHECK (currency_code IN ('BRL', 'USD', 'EUR')),
       status TEXT NOT NULL DEFAULT 'pending',
       notes TEXT NOT NULL DEFAULT '',
       created_at TEXT NOT NULL,
@@ -100,6 +102,17 @@ export function openDatabase(dbPath: string): DatabaseSync {
     CREATE INDEX IF NOT EXISTS idx_comments_project ON comments(project_id);
     CREATE INDEX IF NOT EXISTS idx_invoices_client ON invoices(client);
   `);
+
+  runInTransaction(db, () => {
+    for (const table of ["projects", "invoices"]) {
+      const columns = db.prepare(`PRAGMA table_info(${table})`).all();
+      if (!columns.some((column) => column.name === "currency_code")) {
+        db.exec(`ALTER TABLE ${table} ADD COLUMN currency_code TEXT NOT NULL DEFAULT 'BRL'
+          CHECK (currency_code IN ('BRL', 'USD', 'EUR'))`);
+      }
+    }
+    db.exec("CREATE INDEX IF NOT EXISTS idx_invoices_client_currency ON invoices(client, currency_code)");
+  });
 
   return db;
 }

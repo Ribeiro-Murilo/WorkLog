@@ -22,6 +22,7 @@ struct ProjectSyncPayload: Codable {
     var name: String
     var client: String
     var dailyRate: Decimal
+    var currencyCode: ProjectCurrency?
     var category: ProjectCategory
     var tags: [String]
     var descriptionText: String
@@ -31,11 +32,12 @@ struct ProjectSyncPayload: Codable {
     var createdAt: Date
     var updatedAt: Date
 
-    init(_ model: Project) {
+    init(_ model: Project, includeBaseCurrency: Bool = false) {
         id = model.id
         name = model.name
         client = model.client
         dailyRate = model.dailyRate
+        currencyCode = includeBaseCurrency || model.currency != .brl ? model.currency : nil
         category = model.category
         tags = model.tags
         descriptionText = model.descriptionText
@@ -52,6 +54,7 @@ struct ProjectSyncPayload: Codable {
         model.name = name
         model.client = client
         model.dailyRate = dailyRate
+        model.currencyCode = (currencyCode ?? .brl).rawValue
         model.category = category
         model.tags = tags
         model.descriptionText = descriptionText
@@ -67,6 +70,7 @@ struct ProjectSyncPayload: Codable {
 struct SessionSyncPayload: Codable {
     var id: UUID
     var projectId: UUID?
+    var projectCurrencyCode: ProjectCurrency?
     var date: Date
     var startTime: Date
     var endTime: Date?
@@ -78,9 +82,12 @@ struct SessionSyncPayload: Codable {
     var createdAt: Date
     var updatedAt: Date
 
-    init(_ model: Session) {
+    init(_ model: Session, includeProjectCurrency: Bool = true) {
         id = model.id
         projectId = model.project?.id
+        if includeProjectCurrency, let currency = model.project?.currency, currency != .brl {
+            projectCurrencyCode = currency
+        }
         date = model.date
         startTime = model.startTime
         endTime = model.endTime
@@ -175,12 +182,13 @@ struct InvoiceSyncPayload: Codable {
     var periodEnd: Date
     var lineItems: [InvoiceLineItem]
     var totalValue: Decimal
+    var currencyCode: ProjectCurrency?
     var status: InvoiceStatus
     var notes: String
     var createdAt: Date
     var updatedAt: Date
 
-    init(_ model: Invoice) {
+    init(_ model: Invoice, includeBaseCurrency: Bool = false) {
         id = model.id
         number = model.number
         client = model.client
@@ -189,6 +197,7 @@ struct InvoiceSyncPayload: Codable {
         periodEnd = model.periodEnd
         lineItems = model.lineItems
         totalValue = model.totalValue
+        currencyCode = includeBaseCurrency || model.currency != .brl ? model.currency : nil
         status = model.status
         notes = model.notes
         createdAt = model.createdAt
@@ -205,6 +214,7 @@ struct InvoiceSyncPayload: Codable {
         model.periodEnd = periodEnd
         model.lineItems = lineItems
         model.totalValue = totalValue
+        model.currencyCode = (currencyCode ?? .brl).rawValue
         model.status = status
         model.notes = notes
         model.createdAt = createdAt

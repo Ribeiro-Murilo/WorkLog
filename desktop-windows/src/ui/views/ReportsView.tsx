@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { BarChart3, ChevronDown, Download, Save } from "lucide-react";
-import { formatClock, formatCurrencyBRL } from "../../shared/format";
+import { formatClock, formatCurrencyTotals } from "../../shared/format";
 import {
   DEFAULT_REPORT_COLUMNS,
   REPORT_COLUMNS,
@@ -373,7 +373,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ snapshot }) => {
             Total: {formatClock(result?.totalDuration ?? 0, false)}
           </span>
           <span className="tabular">
-            Valor: {formatCurrencyBRL(result?.totalValue ?? 0)}
+            Valor: {formatCurrencyTotals(result?.totalsByCurrency ?? {})}
           </span>
         </div>
 

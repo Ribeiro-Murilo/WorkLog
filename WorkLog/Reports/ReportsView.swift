@@ -228,9 +228,16 @@ struct ReportsView: View {
                 .font(.headline)
                 .monospacedDigit()
 
-            Text("Valor: \(viewModel.totalValue.currencyFormatted)")
-                .font(.headline)
-                .monospacedDigit()
+            let totals = viewModel.totalsByCurrency
+            VStack(alignment: .leading, spacing: 2) {
+                ForEach(ProjectCurrency.allCases, id: \.self) { currency in
+                    if let value = totals[currency] {
+                        Text(value.formatted(currency: currency, showCode: true))
+                    }
+                }
+            }
+            .font(.headline)
+            .monospacedDigit()
 
             Spacer()
 

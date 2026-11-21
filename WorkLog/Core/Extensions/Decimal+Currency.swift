@@ -1,10 +1,14 @@
 import Foundation
 
 extension Decimal {
-    var currencyFormatted: String {
+    func formatted(currency: ProjectCurrency, showCode: Bool = false) -> String {
         let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
         formatter.locale = Locale(identifier: "pt_BR")
-        return formatter.string(from: self as NSDecimalNumber) ?? "R$ 0,00"
+        formatter.numberStyle = .currency
+        formatter.currencyCode = currency.rawValue
+        if showCode {
+            formatter.currencySymbol = currency.rawValue
+        }
+        return formatter.string(from: self as NSDecimalNumber) ?? "\(currency.rawValue) \(self)"
     }
 }

@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
+import { validateCurrencyCode, type CurrencyCode } from "../../src/shared/currency";
 import { formatInvoiceNumber } from "../../src/shared/format";
 import { intervalsOverlap } from "../../src/shared/periods";
 import type { Invoice, InvoiceLineItem, InvoiceStatus } from "../../src/shared/types";
@@ -14,6 +15,7 @@ interface InvoiceRow {
   period_end: string;
   line_items_json: string;
   total_value: number;
+  currency_code: CurrencyCode;
   status: string;
   notes: string;
   created_at: string;
@@ -47,6 +49,7 @@ function mapInvoice(row: InvoiceRow): Invoice {
     lineItems,
     totalDurationSeconds,
     totalValue: Number(row.total_value) || 0,
+    currencyCode: row.currency_code,
     status: (row.status === "paid" ? "paid" : "pending") as InvoiceStatus,
     notes: row.notes,
     createdAt: row.created_at,
@@ -81,10 +84,10 @@ export class InvoiceRepository {
     return next;
   }
 
-  hasOverlap(client: string, startMs: number, endMs: number, excludingId?: string | null): boolean {
+  hasOverlap(client: string, startMs: number, endMs: number, excludingId?: string | null, currencyCode: CurrencyCode = "BRL"): boolean {
     const rows = this.db
-      .prepare("SELECT * FROM invoices WHERE client = ?")
-      .all(client) as unknown as InvoiceRow[];
+      .prepare("SELECT * FROM invoices WHERE client = ? AND currency_code = ?")
+      .all(client, currencyCode) as unknown as InvoiceRow[];
     return rows.some((row) => {
       if (excludingId && row.id === excludingId) return false;
       const pStart = Date.parse(row.period_start);
@@ -101,6 +104,7 @@ export class InvoiceRepository {
     periodStart: string;
     periodEnd: string;
     lineItems: InvoiceLineItem[];
+    currencyCode?: CurrencyCode;
     notes?: string;
     status?: InvoiceStatus;
   }): Invoice {
@@ -109,14 +113,15 @@ export class InvoiceRepository {
     const id = input.id ?? crypto.randomUUID().toUpperCase();
     const issueDate = input.issueDate ?? now;
     const status = input.status ?? "pending";
+    const currencyCode = validateCurrencyCode(input.currencyCode === undefined ? "BRL" : input.currencyCode);
     const notes = input.notes ?? "";
 
     this.db
       .prepare(
         `INSERT INTO invoices (
           id, number, client, issue_date, period_start, period_end,
-          line_items_json, total_value, status, notes, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          line_items_json, total_value, currency_code, status, notes, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .run(
         id,
@@ -127,6 +132,7 @@ export class InvoiceRepository {
         input.periodEnd,
         JSON.stringify(input.lineItems),
         totalValue,
+        currencyCode,
         status,
         notes,
         now,
@@ -149,8 +155,8 @@ export class InvoiceRepository {
       .prepare(
         `INSERT INTO invoices (
           id, number, client, issue_date, period_start, period_end,
-          line_items_json, total_value, status, notes, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          line_items_json, total_value, currency_code, status, notes, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(id) DO UPDATE SET
           number = excluded.number,
           client = excluded.client,
@@ -159,6 +165,7 @@ export class InvoiceRepository {
           period_end = excluded.period_end,
           line_items_json = excluded.line_items_json,
           total_value = excluded.total_value,
+          currency_code = excluded.currency_code,
           status = excluded.status,
           notes = excluded.notes,
           created_at = excluded.created_at,
@@ -173,6 +180,7 @@ export class InvoiceRepository {
         invoice.periodEnd,
         JSON.stringify(invoice.lineItems),
         invoice.totalValue,
+        invoice.currencyCode,
         invoice.status,
         invoice.notes,
         invoice.createdAt,

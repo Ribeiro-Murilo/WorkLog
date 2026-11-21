@@ -34,6 +34,7 @@
 		FE0600000000000000000004 /* NotchHoverPolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE0600000000000000000003 /* NotchHoverPolicyTests.swift */; };
 		FE0600000000000000000006 /* NotchPanelViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE0600000000000000000005 /* NotchPanelViewModelTests.swift */; };
 		FE0600000000000000000008 /* NotchPanelRenderingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE0600000000000000000007 /* NotchPanelRenderingTests.swift */; };
+		FE0700000000000000000001 /* PTAXServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE0700000000000000000002 /* PTAXServiceTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -82,6 +83,7 @@
 		FE0600000000000000000003 /* NotchHoverPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotchHoverPolicyTests.swift; sourceTree = "<group>"; };
 		FE0600000000000000000005 /* NotchPanelViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotchPanelViewModelTests.swift; sourceTree = "<group>"; };
 		FE0600000000000000000007 /* NotchPanelRenderingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotchPanelRenderingTests.swift; sourceTree = "<group>"; };
+		FE0700000000000000000002 /* PTAXServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PTAXServiceTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -170,6 +172,7 @@
 				FE0600000000000000000001 /* NotchShapeTests.swift */,
 				FE0500000000000000000008 /* NotchScreenRecoveryTests.swift */,
 				FE0300000000000000000002 /* StorageMigrationTests.swift */,
+				FE0700000000000000000002 /* PTAXServiceTests.swift */,
 				7F84FBE2E23B029E05AD27A3 /* ProjectRepositoryTests.swift */,
 				96A14599AA7E5C2481CD72AD /* SessionRepositoryTests.swift */,
 				9A3684D2E814BE8A7CB60830 /* TestSupport.swift */,
@@ -363,6 +366,7 @@
 				FE0600000000000000000002 /* NotchShapeTests.swift in Sources */,
 				FE0500000000000000000007 /* NotchScreenRecoveryTests.swift in Sources */,
 				FE0300000000000000000001 /* StorageMigrationTests.swift in Sources */,
+				FE0700000000000000000001 /* PTAXServiceTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

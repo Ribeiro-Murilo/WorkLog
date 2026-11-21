@@ -15,7 +15,8 @@ Port funcional do WorkLog (macOS SwiftUI v0.2.1) para Windows 10/11, mantendo a 
   - **Sessões e Ciclos:** retomada na mesma sessão (`workPeriods`), visualização e edição de múltiplos ciclos sem contabilizar pausas, detecção de conflitos e sugestão automática de horário livre mais próximo.
   - **Relatórios:** filtros completos, agrupamento detalhado ou por projeto+dia, seleção das 13 colunas, tipos de relatório salvos e exportação em **CSV**, **Excel (SpreadsheetML XML)** e **PDF**.
   - **Faturamento:** pré-visualização consolidada por cliente e período, bloqueio de sobreposição, numeração monotônica `FAT-0001`, status Pendente/Paga e PDF da nota.
-  - **Backup compatível com macOS:** exportação e importação em JSON `formatVersion: 2` (incluindo datas Apple Reference Date, `workPeriodsData` em Base64) e importação de backups v1 legados.
+  - **Moedas por projeto:** BRL, USD e EUR, com conversões indicativas pela PTAX de venda do Banco Central, totais por moeda e faturas na moeda do projeto.
+  - **Backup compatível com macOS:** exportação e importação em JSON `formatVersion: 3`, com moeda por projeto e fatura. Backups v1 e v2 são importados em BRL.
   - **Recursos de sistema:** SQLite local nativo via `node:sqlite`, detecção de inatividade / bloqueio / suspensão, atalhos globais configuráveis e inicialização com o Windows.
 
 ## Desenvolvimento e Empacotamento

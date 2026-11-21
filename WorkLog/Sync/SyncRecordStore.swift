@@ -27,6 +27,7 @@ struct SyncInvoiceCollision: Identifiable {
 protocol FolderSyncRecordStoreProtocol {
     func snapshot() throws -> [SyncRecordKey: Data]
     func runningSessionKeys() throws -> Set<SyncRecordKey>
+    func currencyLockedProjectIDs(removingSessionIDs: Set<String>) throws -> Set<String>
     func apply(_ changes: [SyncRecordChange]) throws
     func loadState(scope: String) throws -> FolderSyncState?
     func saveState(_ state: FolderSyncState, scope: String) throws
@@ -37,6 +38,7 @@ protocol FolderSyncRecordStoreProtocol {
 
 extension FolderSyncRecordStoreProtocol {
     func runningSessionKeys() throws -> Set<SyncRecordKey> { [] }
+    func currencyLockedProjectIDs(removingSessionIDs: Set<String>) throws -> Set<String> { [] }
 }
 
 enum SyncRecordStoreError: LocalizedError {
@@ -44,6 +46,8 @@ enum SyncRecordStoreError: LocalizedError {
     case missingProject(UUID)
     case runningSession(UUID)
     case runningProject(String)
+    case projectCurrencyLocked(String)
+    case sessionCurrencyMismatch(UUID)
     case invoiceNotFound
     case exhaustedInvoiceNumbers
 
@@ -53,6 +57,8 @@ enum SyncRecordStoreError: LocalizedError {
         case .missingProject(let id): return "Aguardando o projeto \(id.uuidString) antes de importar seus registros."
         case .runningSession: return "Sessões em execução pertencem a este Mac. Pause o cronômetro antes de sincronizar esta sessão."
         case .runningProject(let name): return "Pause o cronômetro do projeto \(name) antes de aplicar sua exclusão."
+        case .projectCurrencyLocked(let name): return "O projeto \(name) tem registros de trabalho neste Mac com uma moeda diferente da versão sincronizada."
+        case .sessionCurrencyMismatch(let id): return "A moeda da sessão \(id.uuidString) ainda não corresponde à moeda do projeto."
         case .invoiceNotFound: return "A fatura selecionada não existe mais."
         case .exhaustedInvoiceNumbers: return "O contador de faturas atingiu o limite permitido."
         }
@@ -69,6 +75,21 @@ final class SwiftDataSyncRecordStore: FolderSyncRecordStoreProtocol {
     func runningSessionKeys() throws -> Set<SyncRecordKey> {
         Set(try modelContext.fetch(FetchDescriptor<Session>()).filter { $0.status == .running }
             .map { SyncRecordKey(entity: .session, id: $0.id.uuidString) })
+    }
+
+    func currencyLockedProjectIDs(removingSessionIDs: Set<String>) throws -> Set<String> {
+        Self.currencyLockedProjectIDs(in: try modelContext.fetch(FetchDescriptor<Session>()),
+                                      replacingSessionIDs: removingSessionIDs, allowRunningSessions: false)
+    }
+
+    private static func currencyLockedProjectIDs(in sessions: some Sequence<Session>, replacingSessionIDs: Set<String>,
+                                                 allowRunningSessions: Bool) -> Set<String> {
+        Set(sessions.compactMap { session in
+            if replacingSessionIDs.contains(session.id.uuidString), allowRunningSessions || session.status != .running {
+                return nil
+            }
+            return session.project?.id.uuidString
+        })
     }
 
     func snapshot() throws -> [SyncRecordKey: Data] {
@@ -185,10 +206,18 @@ final class SwiftDataSyncRecordStore: FolderSyncRecordStoreProtocol {
             return project
         }
         // Materialize every parent first regardless of input order.
+        let replacingSessions = Set(changes.filter { $0.key.entity == .session && ($0.payload == nil || allowRunningSessions) }
+            .map { $0.key.id })
+        let currencyLockedProjects = Self.currencyLockedProjectIDs(in: sessions.values, replacingSessionIDs: replacingSessions,
+                                                                  allowRunningSessions: allowRunningSessions)
         for change in changes where change.key.entity == .project && change.payload != nil {
             let payload = try decode(ProjectSyncPayload.self, change, id: { $0.id })
             guard !tombstones.contains(payload.id) else { continue }
-            let item = payload.materialize(existing: projects[payload.id]); modelContext.insert(item); projects[item.id] = item
+            let existing = projects[payload.id]
+            if let existing, existing.currency != (payload.currencyCode ?? .brl), currencyLockedProjects.contains(change.key.id) {
+                throw SyncRecordStoreError.projectCurrencyLocked(existing.name)
+            }
+            let item = payload.materialize(existing: existing); modelContext.insert(item); projects[item.id] = item
         }
         for change in changes where change.key.entity != .project && change.payload != nil {
             switch change.key.entity {
@@ -200,7 +229,13 @@ final class SwiftDataSyncRecordStore: FolderSyncRecordStoreProtocol {
                     if let existing = sessions[payload.id], existing.status != .running { modelContext.delete(existing); sessions[payload.id] = nil }
                     continue
                 }
-                let item = try payload.materialize(existing: sessions[payload.id], project: parent(payload.projectId)); modelContext.insert(item); sessions[item.id] = item
+                let project = try parent(payload.projectId)
+                if !allowRunningSessions, (payload.projectCurrencyCode ?? .brl) != (project?.currency ?? .brl) {
+                    throw SyncRecordStoreError.sessionCurrencyMismatch(payload.id)
+                }
+                let item = payload.materialize(existing: sessions[payload.id], project: project)
+                modelContext.insert(item)
+                sessions[item.id] = item
             case .comment:
                 let payload = try decode(CommentSyncPayload.self, change, id: { $0.id })
                 if let projectID = payload.projectId, tombstones.contains(projectID) {

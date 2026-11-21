@@ -67,6 +67,12 @@ struct InvoiceRepositoryTests {
         #expect(try !repo.hasOverlap(client: "Acme", start: day(21), end: day(25), excluding: nil))
         #expect(try !repo.hasOverlap(client: "Other", start: day(15), end: day(25), excluding: nil))
         #expect(try !repo.hasOverlap(client: "Acme", start: day(10), end: day(20), excluding: invoice.id))
+        #expect(try !repo.hasOverlap(client: "Acme", start: day(15), end: day(25), excluding: nil, currency: .usd))
+
+        let dollarInvoice = Invoice(number: 2, client: "Acme", periodStart: day(10), periodEnd: day(20), lineItems: [], currency: .usd)
+        try repo.insert(dollarInvoice)
+        #expect(try repo.hasOverlap(client: "Acme", start: day(15), end: day(25), excluding: nil, currency: .usd))
+        #expect(try !repo.hasOverlap(client: "Acme", start: day(15), end: day(25), excluding: dollarInvoice.id, currency: .usd))
     }
 
     @Test func deleteRemovesInvoice() throws {

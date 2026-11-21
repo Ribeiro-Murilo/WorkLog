@@ -4,6 +4,7 @@ struct SummaryCardView: View {
     let title: String
     let value: String
     var symbolName: String?
+    var fillsRowHeight = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -16,12 +17,13 @@ struct SummaryCardView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+            .frame(minHeight: fillsRowHeight ? 20 : nil)
             Text(value)
                 .font(.system(size: 22, weight: .semibold, design: .rounded))
                 .monospacedDigit()
         }
         .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, maxHeight: fillsRowHeight ? .infinity : nil, alignment: .topLeading)
         .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
     }
 }

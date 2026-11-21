@@ -23,10 +23,13 @@ final class Invoice {
     var periodEnd: Date = Date.now
     var lineItems: [InvoiceLineItem] = []
     var totalValue: Decimal = 0
+    var currencyCode: String = "BRL"
     var status: InvoiceStatus = InvoiceStatus.pending
     var notes: String = ""
     var createdAt: Date = Date.now
     var updatedAt: Date = Date.now
+
+    var currency: ProjectCurrency { ProjectCurrency(rawValue: currencyCode) ?? .brl }
 
     var totalDurationSeconds: TimeInterval {
         lineItems.reduce(0) { $0 + $1.durationSeconds }
@@ -43,6 +46,7 @@ final class Invoice {
         periodStart: Date,
         periodEnd: Date,
         lineItems: [InvoiceLineItem],
+        currency: ProjectCurrency = .brl,
         notes: String = "",
         status: InvoiceStatus = .pending
     ) {
@@ -54,6 +58,7 @@ final class Invoice {
         self.periodEnd = periodEnd
         self.lineItems = lineItems
         self.totalValue = lineItems.reduce(Decimal(0)) { $0 + $1.value }
+        self.currencyCode = currency.rawValue
         self.notes = notes
         self.status = status
         self.createdAt = .now

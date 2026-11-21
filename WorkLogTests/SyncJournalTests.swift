@@ -207,7 +207,7 @@ struct SyncJournalTests {
 
     @Test func rejectsFutureVersionSelfCycleCrossRecordAndGraphCycle() throws {
         var future = operation("future")
-        future.formatVersion = 2
+        future.formatVersion = 3
         var selfParent = operation("self")
         selfParent.parents = [selfParent.id]
         let aID = UUID(), bID = UUID()
@@ -218,6 +218,36 @@ struct SyncJournalTests {
         for batch in [[future], [selfParent], [a, b], [other, wrongParent]] {
             var state = FolderSyncState()
             #expect(throws: SyncProtocolError.self) { try state.ingest(batch) }
+            #expect(state.operations.isEmpty)
+        }
+    }
+
+    @Test func foreignCurrencyRaisesWireVersionForRecordsAndTheirDescendants() throws {
+        let session = SyncRecordKey(entity: .session, id: UUID().uuidString)
+        let brlProject = bytes(#"{"dailyRate":100}"#)
+        let usdProject = bytes(#"{"currencyCode":"USD","dailyRate":100}"#)
+        let usdSession = bytes(#"{"projectCurrencyCode":"USD"}"#)
+        var source = FolderSyncState()
+        let legacy = try #require(source.captureLocal([key: brlProject], deviceID: device, now: now).first)
+        #expect(legacy.formatVersion == 1)
+
+        let updated = try source.captureLocal([key: usdProject, session: usdSession], deviceID: device, now: now)
+        #expect(updated.count == 2)
+        #expect(updated.allSatisfy { $0.formatVersion == 2 })
+
+        var receiver = FolderSyncState()
+        try receiver.ingest([legacy] + updated)
+        #expect(Set(receiver.resolvedChanges().compactMap(\.payload)) == [usdProject, usdSession])
+
+        let restored = try #require(source.captureLocal([key: brlProject, session: usdSession], deviceID: device, now: now).first)
+        #expect(restored.formatVersion == 2)
+    }
+
+    @Test func rejectsUnsupportedCurrencyAndForeignCurrencyWithoutVersionGate() throws {
+        for (version, payload) in [(1, #"{"currencyCode":"EUR"}"#), (2, #"{"currencyCode":"GBP"}"#)] {
+            let incoming = SyncOperation(formatVersion: version, deviceID: device, key: key, payload: bytes(payload))
+            var state = FolderSyncState()
+            #expect(throws: SyncProtocolError.self) { try state.ingest([incoming]) }
             #expect(state.operations.isEmpty)
         }
     }

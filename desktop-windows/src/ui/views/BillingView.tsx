@@ -1,6 +1,7 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { AlertTriangle, FileDown, FileText, Trash2 } from "lucide-react";
-import { formatClock, formatCurrencyBRL, formatShortDate } from "../../shared/format";
+import { CURRENCIES, type CurrencyCode } from "../../shared/currency";
+import { formatClock, formatCurrency, formatShortDate } from "../../shared/format";
 import {
   INVOICE_STATUS_LABELS,
   REPORT_PERIOD_LABELS,
@@ -26,6 +27,7 @@ function todayInputDate(): string {
 export const BillingView: React.FC<BillingViewProps> = ({ snapshot }) => {
   const [clients, setClients] = useState<string[]>([]);
   const [selectedClient, setSelectedClient] = useState<string>("");
+  const [preferredCurrency, setPreferredCurrency] = useState<CurrencyCode | null>(null);
   const [period, setPeriod] = useState<ReportPeriod>("month");
   const [customStart, setCustomStart] = useState(todayInputDate);
   const [customEnd, setCustomEnd] = useState(todayInputDate);
@@ -48,23 +50,29 @@ export const BillingView: React.FC<BillingViewProps> = ({ snapshot }) => {
     };
   }, [snapshot.projects, selectedClient]);
 
-  const refreshPreview = useCallback(async () => {
-    try {
-      const data = await window.worklog.billing.preview({
-        client: selectedClient || null,
-        period,
-        customStart,
-        customEnd
-      });
-      setPreview(data);
-    } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : String(err));
-    }
-  }, [selectedClient, period, customStart, customEnd]);
+  const clientCurrencies = CURRENCIES.filter((currency) =>
+    snapshot.projects.some((project) => project.client === selectedClient && project.currencyCode === currency)
+  );
+  const selectedCurrency = preferredCurrency && clientCurrencies.includes(preferredCurrency)
+    ? preferredCurrency : clientCurrencies[0] ?? "BRL";
 
   useEffect(() => {
-    void refreshPreview();
-  }, [refreshPreview, snapshot.sessions, snapshot.invoices]);
+    let active = true;
+    setPreview(null);
+    void window.worklog.billing.preview({
+      client: selectedClient || null,
+      currencyCode: selectedCurrency,
+      period,
+      customStart,
+      customEnd
+    }).then((data) => {
+      if (active) setPreview(data);
+    }).catch((err) => {
+      if (active) setErrorMessage(err instanceof Error ? err.message : String(err));
+    });
+    return () => { active = false; };
+  }, [selectedClient, selectedCurrency, period, customStart, customEnd,
+      snapshot.projects, snapshot.sessions, snapshot.invoices]);
 
   const handleGenerate = async () => {
     if (!selectedClient) return;
@@ -72,6 +80,7 @@ export const BillingView: React.FC<BillingViewProps> = ({ snapshot }) => {
       setErrorMessage(null);
       await window.worklog.billing.generateInvoice({
         client: selectedClient,
+        currencyCode: selectedCurrency,
         period,
         customStart,
         customEnd,
@@ -117,6 +126,18 @@ export const BillingView: React.FC<BillingViewProps> = ({ snapshot }) => {
 
           <select
             className="select"
+            aria-label="Moeda da fatura"
+            value={selectedCurrency}
+            disabled={clientCurrencies.length <= 1}
+            onChange={(e) => setPreferredCurrency(e.target.value as CurrencyCode)}
+          >
+            {(clientCurrencies.length ? clientCurrencies : ["BRL"]).map((currency) => (
+              <option key={currency}>{currency}</option>
+            ))}
+          </select>
+
+          <select
+            className="select"
             value={period}
             onChange={(e) => setPeriod(e.target.value as ReportPeriod)}
           >
@@ -153,7 +174,7 @@ export const BillingView: React.FC<BillingViewProps> = ({ snapshot }) => {
               <FileText size={26} />
               <strong>Nenhuma sessão no período</strong>
               <span className="small">
-                Selecione um cliente e período com sessões encerradas.
+                Selecione um cliente, uma moeda e um período com sessões encerradas.
               </span>
             </div>
           ) : (
@@ -175,7 +196,7 @@ export const BillingView: React.FC<BillingViewProps> = ({ snapshot }) => {
                       {formatClock(item.durationSeconds, false)}
                     </td>
                     <td className="tabular" style={{ textAlign: "right" }}>
-                      {formatCurrencyBRL(item.value)}
+                      {formatCurrency(item.value, preview.currencyCode, true)}
                     </td>
                   </tr>
                 ))}
@@ -187,7 +208,7 @@ export const BillingView: React.FC<BillingViewProps> = ({ snapshot }) => {
         {preview?.overlapsExistingInvoice && (
           <div className="alert-banner alert-warning" style={{ marginBottom: 12 }}>
             <AlertTriangle size={16} />
-            Já existe uma fatura deste cliente com período sobreposto a este.
+            Já existe uma fatura deste cliente em {preview.currencyCode} com período sobreposto a este.
           </div>
         )}
 
@@ -205,7 +226,7 @@ export const BillingView: React.FC<BillingViewProps> = ({ snapshot }) => {
               Total: {formatClock(preview?.totalDurationSeconds ?? 0, false)}
             </span>
             <span className="tabular">
-              Valor: {formatCurrencyBRL(preview?.totalValue ?? 0)}
+              Valor: {formatCurrency(preview?.totalValue ?? 0, selectedCurrency, true)}
             </span>
           </div>
 
@@ -223,6 +244,8 @@ export const BillingView: React.FC<BillingViewProps> = ({ snapshot }) => {
               className="btn btn-primary"
               disabled={
                 !preview ||
+                preview.client !== selectedClient ||
+                preview.currencyCode !== selectedCurrency ||
                 preview.lineItems.length === 0 ||
                 preview.overlapsExistingInvoice
               }
@@ -265,7 +288,7 @@ export const BillingView: React.FC<BillingViewProps> = ({ snapshot }) => {
                       {formatShortDate(invoice.periodEnd)}
                     </td>
                     <td className="tabular" style={{ textAlign: "right" }}>
-                      {formatCurrencyBRL(invoice.totalValue)}
+                      {formatCurrency(invoice.totalValue, invoice.currencyCode, true)}
                     </td>
                     <td>
                       <button

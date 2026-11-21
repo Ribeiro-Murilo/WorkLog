@@ -195,6 +195,7 @@ final class LegacyStorageMigrator {
                 name: sourceProject.name,
                 client: sourceProject.client,
                 dailyRate: sourceProject.dailyRate,
+                currency: sourceProject.currency,
                 category: sourceProject.category,
                 tags: sourceProject.tags,
                 descriptionText: sourceProject.descriptionText,
@@ -303,6 +304,7 @@ final class LegacyStorageMigrator {
                 periodStart: sourceInvoice.periodStart,
                 periodEnd: sourceInvoice.periodEnd,
                 lineItems: sourceInvoice.lineItems,
+                currency: sourceInvoice.currency,
                 notes: sourceInvoice.notes,
                 status: sourceInvoice.status
             )

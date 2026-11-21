@@ -344,7 +344,7 @@ struct ResumedSessionIntegrationTests {
         reports.period = .custom
         #expect(reports.sessions.map(\.id) == [session.id])
         #expect(reports.totalDuration == 7200)
-        #expect(reports.totalValue == 200)
+        #expect(reports.totalsByCurrency == [.brl: 200])
         #expect(reports.reportRows().reduce(0) { $0 + $1.durationSeconds } == 7200)
         reports.grouping = .byProjectAndDay
         #expect(reports.reportRows().count == 1)

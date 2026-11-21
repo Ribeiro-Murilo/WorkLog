@@ -123,7 +123,11 @@ final class ReportsViewModel {
 
     var totalDuration: TimeInterval { detailedRows.reduce(0) { $0 + $1.durationSeconds } }
 
-    var totalValue: Decimal { detailedRows.reduce(Decimal(0)) { $0 + $1.estimatedValue } }
+    var totalsByCurrency: [ProjectCurrency: Decimal] {
+        detailedRows.reduce(into: [:]) { totals, row in
+            totals[row.currency, default: 0] += row.estimatedValue
+        }
+    }
 
     private var detailedRows: [ReportRow] {
         let interval = period.dateInterval(customStart: customStart, customEnd: customEnd)
@@ -181,7 +185,8 @@ final class ReportsViewModel {
                 endTime: group.compactMap(\.endTime).max(),
                 durationSeconds: group.reduce(0) { $0 + $1.durationSeconds },
                 category: first.category, status: first.status,
-                estimatedValue: group.reduce(Decimal(0)) { $0 + $1.estimatedValue }, note: notes,
+                estimatedValue: group.reduce(Decimal(0)) { $0 + $1.estimatedValue },
+                currency: first.currency, note: notes,
                 tags: first.tags, descriptionText: first.descriptionText, sessionCount: sessionIDs.count)
         }
     }
@@ -189,8 +194,23 @@ final class ReportsViewModel {
     func exportTable() -> ExportTable {
         let columns = selectedColumns.isEmpty ? ReportColumn.defaultSelection : selectedColumns
         let headers = columns.map(\.header)
-        let rows = reportRows().map { row in
+        var rows = reportRows().map { row in
             columns.map { $0.value(from: row) }
+        }
+        if let valueColumn = columns.firstIndex(of: .value) {
+            let totals = totalsByCurrency
+            for currency in ProjectCurrency.allCases {
+                guard let total = totals[currency] else { continue }
+                let value = total.formatted(currency: currency, showCode: true)
+                var subtotal = Array(repeating: "", count: columns.count)
+                subtotal[valueColumn] = value
+                if let labelColumn = columns.indices.first(where: { $0 != valueColumn }) {
+                    subtotal[labelColumn] = "Subtotal"
+                } else {
+                    subtotal[valueColumn] = "Subtotal \(value)"
+                }
+                rows.append(subtotal)
+            }
         }
         return ExportTable(
             title: "Relatório — \(period.displayName)",

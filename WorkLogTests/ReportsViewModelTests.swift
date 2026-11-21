@@ -75,4 +75,26 @@ struct ReportsViewModelTests {
         #expect(table.rows[0].count == 2)
         #expect(table.rows[0][0] == "Alpha")
     }
+
+    @Test func mixedCurrenciesKeepSeparateTotalsAndIncludeTheirCodesInTheExport() {
+        let vm = ReportsViewModel(
+            sessionRepository: SessionRepository(modelContext: makeInMemoryContext()),
+            exportService: ExportService()
+        )
+        let real = Project(name: "Local", client: "Cliente", dailyRate: 800, category: .work)
+        let dollar = Project(name: "Exterior", client: "Cliente", dailyRate: 400, currency: .usd, category: .work)
+        let day = Calendar.current.startOfDay(for: .now)
+        vm.setSessionsForTesting([
+            makeSession(project: real, date: day, durationSeconds: 3600),
+            makeSession(project: dollar, date: day, durationSeconds: 3600),
+        ])
+        vm.selectedColumns = [.project, .value]
+        vm.grouping = .byProjectAndDay
+
+        #expect(vm.totalsByCurrency == [.brl: 100, .usd: 50])
+        let export = vm.exportTable()
+        #expect(export.rows[0][1].contains("BRL"))
+        #expect(export.rows[1][1].contains("USD"))
+        #expect(export.rows.suffix(2).allSatisfy { $0[0] == "Subtotal" })
+    }
 }

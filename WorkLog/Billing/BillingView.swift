@@ -58,7 +58,19 @@ struct BillingView: View {
                 }
                 .frame(maxWidth: 200)
 
-                if viewModel.period == .custom {
+                Picker("Moeda", selection: Binding(get: { viewModel.selectedCurrency }, set: { viewModel.selectedCurrency = $0 })) {
+                    ForEach(viewModel.availableCurrencies.isEmpty ? [viewModel.selectedCurrency] : viewModel.availableCurrencies, id: \.self) { currency in
+                        Text(currency.rawValue).tag(currency)
+                    }
+                }
+                .fixedSize()
+                .disabled(viewModel.availableCurrencies.count < 2)
+
+                Spacer()
+            }
+
+            if viewModel.period == .custom {
+                HStack {
                     DatePicker("De", selection: Binding(get: { viewModel.customStart }, set: {
                         viewModel.customStart = $0
                         viewModel.generatePreview()
@@ -67,9 +79,8 @@ struct BillingView: View {
                         viewModel.customEnd = $0
                         viewModel.generatePreview()
                     }), displayedComponents: .date)
+                    Spacer()
                 }
-
-                Spacer()
             }
 
             Table(viewModel.previewLineItems) {
@@ -83,7 +94,7 @@ struct BillingView: View {
                     Text(item.durationSeconds.formattedClock(showSeconds: false)).monospacedDigit()
                 }
                 TableColumn("Valor") { item in
-                    Text(item.value.currencyFormatted).monospacedDigit()
+                    Text(item.value.formatted(currency: viewModel.selectedCurrency, showCode: true)).monospacedDigit()
                 }
             }
             .frame(minHeight: 140, idealHeight: 180, maxHeight: 220)
@@ -98,7 +109,7 @@ struct BillingView: View {
             }
 
             if viewModel.periodOverlapsExistingInvoice {
-                Label("Já existe uma fatura deste cliente com período sobreposto a este.", systemImage: "exclamationmark.triangle.fill")
+                Label("Já existe uma fatura deste cliente na moeda e no período selecionados.", systemImage: "exclamationmark.triangle.fill")
                     .font(.callout)
                     .foregroundStyle(.orange)
             }
@@ -107,7 +118,7 @@ struct BillingView: View {
                 Text("Total: \(viewModel.previewTotalDuration.formattedClock(showSeconds: false))")
                     .font(.headline)
                     .monospacedDigit()
-                Text("Valor: \(viewModel.previewTotalValue.currencyFormatted)")
+                Text(viewModel.previewTotalValue.formatted(currency: viewModel.selectedCurrency, showCode: true))
                     .font(.headline)
                     .monospacedDigit()
 
@@ -142,7 +153,7 @@ struct BillingView: View {
                     Text("\(DateFormatter.shortDate.string(from: invoice.periodStart)) – \(DateFormatter.shortDate.string(from: invoice.periodEnd))")
                 }
                 TableColumn("Valor") { invoice in
-                    Text(invoice.totalValue.currencyFormatted).monospacedDigit()
+                    Text(invoice.totalValue.formatted(currency: invoice.currency, showCode: true)).monospacedDigit()
                 }
                 TableColumn("Status") { invoice in
                     Button(invoice.status.displayName) {

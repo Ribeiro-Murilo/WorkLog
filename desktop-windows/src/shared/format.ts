@@ -1,3 +1,4 @@
+import { CURRENCIES, type CurrencyCode } from "./currency";
 import type { TimeFormatPreference } from "./types";
 
 const PROJECT_PALETTE = [
@@ -36,14 +37,24 @@ export function formatCompactTimer(seconds: number, showSeconds: boolean): strin
   return showSeconds ? `${mm}:${ss}` : `${mm} min`;
 }
 
-const brlFormatter = new Intl.NumberFormat("pt-BR", {
-  style: "currency",
-  currency: "BRL"
+const currencyFormatters = new Map(CURRENCIES.map((currency) => [currency,
+  new Intl.NumberFormat("pt-BR", { style: "currency", currency })
+]));
+const amountFormatter = new Intl.NumberFormat("pt-BR", {
+  minimumFractionDigits: 2, maximumFractionDigits: 2
 });
 
-export function formatCurrencyBRL(value: number): string {
+export function formatCurrency(value: number, currency: CurrencyCode, useCode = false): string {
   const safe = Number.isFinite(value) ? value : 0;
-  return brlFormatter.format(safe);
+  if (useCode) return `${currency} ${amountFormatter.format(safe)}`;
+  return currencyFormatters.get(currency)!.format(safe);
+}
+
+export function formatCurrencyTotals(totals: Partial<Record<CurrencyCode, number>>): string {
+  return CURRENCIES.flatMap((currency) => {
+    const value = totals[currency];
+    return value === undefined ? [] : [formatCurrency(value, currency, true)];
+  }).join("  ·  ") || "—";
 }
 
 export function formatShortDate(iso: string): string {

@@ -54,6 +54,7 @@ struct InvoiceDocument {
     let lineItems: [InvoiceLineItem]
     let totalDurationSeconds: TimeInterval
     let totalValue: Decimal
+    var currency: ProjectCurrency = .brl
     let notes: String
 }
 
@@ -238,13 +239,13 @@ struct ExportService: ExportServiceProtocol {
                 DateFormatter.shortDate.string(from: item.date),
                 item.projectName,
                 item.durationSeconds.formattedClock(showSeconds: false),
-                item.value.currencyFormatted,
+                item.value.formatted(currency: document.currency, showCode: true),
             ]
         }
         rows.append([
             "", "Total",
             document.totalDurationSeconds.formattedClock(showSeconds: false),
-            document.totalValue.currencyFormatted,
+            document.totalValue.formatted(currency: document.currency, showCode: true),
         ])
 
         PDFTableRenderer.render(

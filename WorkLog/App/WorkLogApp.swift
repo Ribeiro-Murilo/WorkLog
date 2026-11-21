@@ -13,6 +13,7 @@ struct WorkLogApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     private let persistenceController = PersistenceController.shared
     private let dependencies: DependencyContainer
+    private let ptax = PTAXService()
 
     init() {
         let dependencies = DependencyContainer(modelContext: persistenceController.mainContext)
@@ -33,9 +34,10 @@ struct WorkLogApp: App {
         } collapsedTrailing: {
             NotchTimerBadge().environment(\.dependencies, dependencies)
         }
-        appDelegate.onDidFinishLaunching = { [dependencies] in
+        appDelegate.onDidFinishLaunching = { [dependencies, ptax] in
             dependencies.displayModeManager.refresh()
             dependencies.folderSyncService.start()
+            ptax.start()
         }
     }
 
@@ -43,6 +45,7 @@ struct WorkLogApp: App {
         Window("Dashboard", id: "dashboard") {
             ContentView()
                 .environment(\.dependencies, dependencies)
+                .environment(ptax)
         }
         .modelContainer(persistenceController.container)
 

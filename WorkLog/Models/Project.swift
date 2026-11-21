@@ -7,6 +7,7 @@ final class Project {
     var name: String = ""
     var client: String = ""
     var dailyRate: Decimal = 0
+    var currencyCode: String = "BRL"
     var category: ProjectCategory = ProjectCategory.work
     var tags: [String] = []
     var descriptionText: String = ""
@@ -21,6 +22,10 @@ final class Project {
 
     @Relationship(deleteRule: .cascade, inverse: \Comment.project)
     var comments: [Comment]? = []
+
+    var currency: ProjectCurrency { ProjectCurrency(rawValue: currencyCode) ?? .brl }
+
+    var canChangeCurrency: Bool { sessions?.isEmpty ?? true }
 
     /// Jornada padrão (em horas) usada para converter "Valor por dia" em valor por sessão.
     static let standardWorkdayHours: Double = 8
@@ -45,6 +50,7 @@ final class Project {
         name: String,
         client: String,
         dailyRate: Decimal,
+        currency: ProjectCurrency = .brl,
         category: ProjectCategory,
         tags: [String] = [],
         descriptionText: String = "",
@@ -56,6 +62,7 @@ final class Project {
         self.name = name
         self.client = client
         self.dailyRate = dailyRate
+        self.currencyCode = currency.rawValue
         self.category = category
         self.tags = tags
         self.descriptionText = descriptionText

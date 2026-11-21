@@ -16,7 +16,18 @@ struct ProjectFormView: View {
                     Section("Informações básicas") {
                         TextField("Nome do projeto", text: Binding(get: { viewModel.name }, set: { viewModel.name = $0 }))
                         TextField("Cliente", text: Binding(get: { viewModel.client }, set: { viewModel.client = $0 }))
-                        TextField("Valor por dia (R$)", text: Binding(get: { viewModel.dailyRateText }, set: { viewModel.dailyRateText = $0 }))
+                        Picker("Moeda do projeto", selection: Binding(get: { viewModel.currency }, set: { viewModel.currency = $0 })) {
+                            Text("Real (BRL)").tag(ProjectCurrency.brl)
+                            Text("Dólar (USD)").tag(ProjectCurrency.usd)
+                            Text("Euro (EUR)").tag(ProjectCurrency.eur)
+                        }
+                        .disabled(!viewModel.canChangeCurrency)
+                        if !viewModel.canChangeCurrency {
+                            Text("A moeda fica bloqueada enquanto o projeto tiver sessões.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        TextField("Valor por dia (\(viewModel.currency.rawValue))", text: Binding(get: { viewModel.dailyRateText }, set: { viewModel.dailyRateText = $0 }))
                     }
 
                     Section("Classificação") {

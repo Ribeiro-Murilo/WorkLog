@@ -1,6 +1,7 @@
 import { app, BrowserWindow, dialog, ipcMain, nativeTheme } from "electron";
 import fs from "node:fs";
 import os from "node:os";
+import type { CurrencyCode } from "../src/shared/currency";
 import { formatCompactTimer, projectColorHex } from "../src/shared/format";
 import type {
   AppSettings,
@@ -25,6 +26,7 @@ import type { BillingService } from "./services/billingService";
 import type { CommentRepository } from "./services/commentRepository";
 import type { DashboardService } from "./services/dashboardService";
 import type { InvoiceRepository } from "./services/invoiceRepository";
+import type { PtaxService } from "./services/ptaxService";
 import type { ProjectRepository } from "./services/projectRepository";
 import type { ReportPresetRepository } from "./services/reportPresetRepository";
 import type { ReportService } from "./services/reportService";
@@ -44,6 +46,7 @@ export interface AppServices {
   shortcutsRepo: ShortcutRepository;
   timer: TimerService;
   dashboard: DashboardService;
+  ptax: PtaxService;
   reports: ReportService;
   billing: BillingService;
   backup: BackupService;
@@ -106,7 +109,8 @@ export function buildSnapshot(services: AppServices): AppSnapshot {
       compactElapsed,
       activeProjectColor
     },
-    appVersion: app.getVersion()
+    appVersion: app.getVersion(),
+    ptax: services.ptax.state
   };
 }
 
@@ -264,14 +268,14 @@ export function registerIpc(services: AppServices): void {
   ipcMain.handle("billing:availableClients", () => services.billing.availableClients());
   ipcMain.handle(
     "billing:preview",
-    (_e, params: { client: string | null; period: ReportPeriod; customStart: string; customEnd: string }) =>
+    (_e, params: { client: string | null; period: ReportPeriod; currencyCode: CurrencyCode; customStart: string; customEnd: string }) =>
       services.billing.preview(params)
   );
   ipcMain.handle(
     "billing:generateInvoice",
     (
       _e,
-      params: { client: string; period: ReportPeriod; customStart: string; customEnd: string; notes: string }
+      params: { client: string; period: ReportPeriod; currencyCode: CurrencyCode; customStart: string; customEnd: string; notes: string }
     ) => {
       services.billing.generateInvoice(params);
       notify();

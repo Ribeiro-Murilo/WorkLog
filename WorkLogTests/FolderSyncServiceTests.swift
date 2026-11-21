@@ -7,6 +7,117 @@ import Testing
 struct FolderSyncServiceTests {
     private let key = SyncRecordKey(entity: .project, id: UUID().uuidString)
 
+    @Test func sessionIsDeferredUntilProjectCurrencyArrives() async throws {
+        let fixture = try SyncServiceFixture()
+        defer { fixture.cleanUp() }
+        let context = try emptyConflictContext()
+        let project = Project(name: "Project", client: "Acme", dailyRate: 100, category: .work)
+        context.insert(project)
+        try context.save()
+        let store = SwiftDataSyncRecordStore(modelContext: context)
+        let service = FolderSyncService(recordStore: store, userDefaults: fixture.makeDefaults())
+        try service.chooseFolder(fixture.folder)
+        await service.synchronize()
+        let state = try #require(try store.loadState(scope: fixture.folder.standardizedFileURL.path))
+        let original = try #require(state.operations.first { $0.key.entity == .project })
+        let remoteProject = Project(name: "Project", client: "Acme", dailyRate: 100, currency: .usd, category: .work)
+        remoteProject.id = project.id
+        let session = Session(project: remoteProject, date: .now, startTime: .now, durationSeconds: 3600,
+                              category: .work, status: .completed)
+        let files = FolderSyncFileStore(folder: fixture.folder)
+        let remoteDevice = UUID()
+        try await files.publish(SyncOperation(formatVersion: 2, deviceID: remoteDevice,
+            key: SyncRecordKey(entity: .session, id: session.id.uuidString),
+            payload: try SyncPayloadCodec.encode(SessionSyncPayload(session))))
+        await service.synchronize()
+
+        #expect(service.errorMessage == nil)
+        #expect(service.pendingDependencyCount == 1)
+        #expect(try context.fetch(FetchDescriptor<Session>()).isEmpty)
+        #expect(project.currency == .brl)
+
+        try await files.publish(SyncOperation(formatVersion: 2, deviceID: remoteDevice, key: original.key,
+            parents: [original.id], payload: try SyncPayloadCodec.encode(ProjectSyncPayload(remoteProject))))
+        await service.synchronize()
+
+        #expect(service.errorMessage == nil)
+        #expect(service.pendingDependencyCount == 0)
+        #expect(project.currency == .usd)
+        #expect(try context.fetch(FetchDescriptor<Session>()).first?.id == session.id)
+    }
+
+    @Test func incompatibleProjectCurrencyDoesNotBlockOtherRecordsAndRecoversAfterSessionDeletion() async throws {
+        let fixture = try SyncServiceFixture()
+        defer { fixture.cleanUp() }
+        let source = try emptyConflictContext()
+        let destination = try emptyConflictContext(container: serviceTestContainers.1)
+        defer { _ = try? emptyConflictContext(container: serviceTestContainers.1) }
+
+        let project = Project(name: "Shared", client: "Acme", dailyRate: 100, category: .work)
+        let projectID = project.id
+        source.insert(project)
+        try source.save()
+        let firstStore = SwiftDataSyncRecordStore(modelContext: source)
+        let secondStore = SwiftDataSyncRecordStore(modelContext: destination)
+        let firstDefaults = fixture.makeDefaults()
+        let first = FolderSyncService(recordStore: firstStore, userDefaults: firstDefaults)
+        let second = FolderSyncService(recordStore: secondStore, userDefaults: fixture.makeDefaults())
+        try first.chooseFolder(fixture.folder)
+        try second.chooseFolder(fixture.folder)
+        await first.synchronize()
+        await second.synchronize()
+
+        let localSession = Session(project: project, date: .now, startTime: .now, durationSeconds: 3600,
+                                   category: .work, status: .completed)
+        source.insert(localSession)
+        try source.save()
+        let secondRepo = ProjectRepository(modelContext: destination)
+        let remoteProject = try #require(try secondRepo.fetch(by: projectID))
+        try secondRepo.update(remoteProject, currency: .usd)
+        let separateProject = Project(name: "Independent", client: "Independent", dailyRate: 250, currency: .eur, category: .work)
+        let separateInvoice = Invoice(number: 1, client: "Independent", periodStart: .now, periodEnd: .now,
+                                      lineItems: [], currency: .eur)
+        destination.insert(separateProject)
+        destination.insert(separateInvoice)
+        try destination.save()
+
+        await second.synchronize()
+        await first.synchronize()
+        await second.synchronize()
+
+        #expect(first.errorMessage == nil)
+        #expect(first.status.contains("moeda"))
+        #expect(second.status.contains("moeda"))
+        #expect(first.pendingDependencyCount == 1)
+        #expect(second.pendingDependencyCount == 1)
+        #expect(project.currency == .brl)
+        #expect(remoteProject.currency == .usd)
+        #expect(try source.fetch(FetchDescriptor<Session>()).first?.id == localSession.id)
+        #expect(try destination.fetch(FetchDescriptor<Session>()).isEmpty)
+        #expect(try source.fetch(FetchDescriptor<Project>()).first { $0.id == separateProject.id }?.currency == .eur)
+        #expect(try source.fetch(FetchDescriptor<Invoice>()).first { $0.id == separateInvoice.id }?.currency == .eur)
+        let checkpoint = try #require(try firstStore.loadState(scope: fixture.folder.standardizedFileURL.path))
+        let projectKey = SyncRecordKey(entity: .project, id: projectID.uuidString)
+        #expect(checkpoint.operations.contains { $0.key == projectKey && $0.formatVersion == 2 })
+        let baseline = try #require(checkpoint.baseline[projectKey])
+        #expect(try SyncPayloadCodec.decode(ProjectSyncPayload.self, from: baseline).currencyCode == nil)
+
+        let restarted = FolderSyncService(recordStore: firstStore, userDefaults: firstDefaults)
+        await restarted.synchronize()
+        #expect(restarted.errorMessage == nil)
+        #expect(restarted.pendingDependencyCount == 1)
+        source.delete(localSession)
+        try source.save()
+        await restarted.synchronize()
+        await second.synchronize()
+
+        #expect(restarted.errorMessage == nil)
+        #expect(restarted.pendingDependencyCount == 0)
+        #expect(project.currency == .usd)
+        #expect(second.pendingDependencyCount == 0)
+        #expect(try destination.fetch(FetchDescriptor<Session>()).isEmpty)
+    }
+
     @Test func resumingSyncedPausedSessionDoesNotPublishDeletionOrOpenWorkPeriod() async throws {
         let fixture = try SyncServiceFixture()
         defer { fixture.cleanUp() }
@@ -402,8 +513,8 @@ private let conflictTestContainer: ModelContainer = {
 }()
 
 @MainActor
-private func emptyConflictContext() throws -> ModelContext {
-    let context = ModelContext(conflictTestContainer)
+private func emptyConflictContext(container: ModelContainer = conflictTestContainer) throws -> ModelContext {
+    let context = ModelContext(container)
     context.autosaveEnabled = false
     try context.delete(model: Session.self)
     try context.delete(model: WorkLog.Comment.self)

@@ -2,7 +2,7 @@ import Foundation
 import SwiftData
 
 private struct WorkLogBackupArchive: Codable {
-    var formatVersion: Int = 2
+    var formatVersion: Int = 3
     var exportedAt: Date
     var projects: [ProjectSyncPayload]
     var sessions: [SessionSyncPayload]
@@ -39,11 +39,14 @@ final class BackupService: BackupServiceProtocol {
     func exportBackup(to url: URL) throws {
         let archive = WorkLogBackupArchive(
             exportedAt: .now,
-            projects: try modelContext.fetch(FetchDescriptor<Project>()).sorted { $0.id.uuidString < $1.id.uuidString }.map(ProjectSyncPayload.init),
-            sessions: try modelContext.fetch(FetchDescriptor<Session>()).sorted { $0.id.uuidString < $1.id.uuidString }.map(SessionSyncPayload.init),
+            projects: try modelContext.fetch(FetchDescriptor<Project>()).sorted { $0.id.uuidString < $1.id.uuidString }
+                .map { ProjectSyncPayload($0, includeBaseCurrency: true) },
+            sessions: try modelContext.fetch(FetchDescriptor<Session>()).sorted { $0.id.uuidString < $1.id.uuidString }
+                .map { SessionSyncPayload($0, includeProjectCurrency: false) },
             comments: try modelContext.fetch(FetchDescriptor<Comment>()).sorted { $0.id.uuidString < $1.id.uuidString }.map(CommentSyncPayload.init),
             reportPresets: try modelContext.fetch(FetchDescriptor<ReportPreset>()).sorted { $0.id.uuidString < $1.id.uuidString }.map(ReportPresetSyncPayload.init),
-            invoices: try modelContext.fetch(FetchDescriptor<Invoice>()).sorted { $0.id.uuidString < $1.id.uuidString }.map(InvoiceSyncPayload.init),
+            invoices: try modelContext.fetch(FetchDescriptor<Invoice>()).sorted { $0.id.uuidString < $1.id.uuidString }
+                .map { InvoiceSyncPayload($0, includeBaseCurrency: true) },
             settings: try modelContext.fetch(FetchDescriptor<AppSettings>()).sorted { $0.id.uuidString < $1.id.uuidString }.map(AppSettingsSyncPayload.init),
             shortcuts: try modelContext.fetch(FetchDescriptor<ShortcutBinding>()).sorted { $0.actionRawValue < $1.actionRawValue }.map(ShortcutBindingSyncPayload.init)
         )
@@ -93,9 +96,24 @@ final class BackupService: BackupServiceProtocol {
 
     private func decodeArchive(_ data: Data) throws -> WorkLogBackupArchive {
         guard var object = try JSONSerialization.jsonObject(with: data) as? [String: Any] else { throw BackupArchiveError.invalidArchive }
+        let formatVersion: Int
         if let version = object["formatVersion"] {
-            guard let number = version as? Int, number == 2 else { throw BackupArchiveError.unsupportedVersion }
-            return try SyncPayloadCodec.decode(WorkLogBackupArchive.self, from: data)
+            guard let number = version as? Int, (1...3).contains(number) else { throw BackupArchiveError.unsupportedVersion }
+            formatVersion = number
+        } else {
+            formatVersion = 1
+        }
+        if formatVersion == 3 {
+            let archive = try SyncPayloadCodec.decode(WorkLogBackupArchive.self, from: data)
+            guard archive.projects.allSatisfy({ $0.currencyCode != nil }),
+                  archive.invoices.allSatisfy({ $0.currencyCode != nil }) else { throw BackupArchiveError.invalidArchive }
+            return archive
+        }
+        if formatVersion == 2 {
+            var archive = try SyncPayloadCodec.decode(WorkLogBackupArchive.self, from: data)
+            for index in archive.projects.indices { archive.projects[index].currencyCode = nil }
+            for index in archive.invoices.indices { archive.invoices[index].currencyCode = nil }
+            return archive
         }
         // Original JSON backups used ISO8601 dates and omitted creation/update timestamps.
         guard let exportedAt = object["exportedAt"] as? String,
@@ -104,12 +122,13 @@ final class BackupService: BackupServiceProtocol {
         for index in projects.indices {
             projects[index]["createdAt"] = projects[index]["createdAt"] ?? exportedAt
             projects[index]["updatedAt"] = projects[index]["updatedAt"] ?? exportedAt
+            projects[index].removeValue(forKey: "currencyCode")
         }
         for index in sessions.indices {
             sessions[index]["createdAt"] = sessions[index]["createdAt"] ?? exportedAt
             sessions[index]["updatedAt"] = sessions[index]["updatedAt"] ?? exportedAt
         }
-        object["formatVersion"] = 2
+        object["formatVersion"] = 1
         object["projects"] = projects; object["sessions"] = sessions
         object["comments"] = []; object["reportPresets"] = []; object["invoices"] = []; object["settings"] = []; object["shortcuts"] = []
         let decoder = JSONDecoder(); decoder.dateDecodingStrategy = .iso8601
